@@ -1,0 +1,12 @@
+
+Example lighttpd config for the json-dbus-bridge:
+
+fastcgi.server = (
+	"/rpc" => ((
+		"bin-path" => "/usr/bin/sudo -u anon /usr/bin/json-dbus-bridge",
+		"socket" => "/tmp/anon.json-dbus-bridge.socket",
+		"check-local" => "disable",
+		"mode" => "responder",
+	))
+)
+
