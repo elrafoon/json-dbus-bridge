@@ -126,6 +126,12 @@ failed:
 	bridge_request_error(self);
 }
 
+void bridge_request_json_service_error(bridge_request_t *self, int id, const char *message)
+{
+	bridge_request_json_error(self, id, error_origin_server,
+				  error_code_illegal_service, message);
+}
+
 int _json_object_object_getint(struct json_object *obj, char *key, int *value)
 {
 	struct json_object *tmp;
@@ -148,132 +154,333 @@ int _json_object_object_getstring(struct json_object *obj, char *key, const char
 	return 0;
 }
 
-int bridge_request_dbus_params(bridge_request_t *self, int id, struct json_object *params,
-			       DBusMessageIter *it)
+int bridge_request_dbus_params_basic(bridge_request_t *self, int id,
+				     struct json_object *param, int type,
+				     DBusMessageIter *it, int *found)
 {
-	int len, i;
-	struct json_object *tmp;
-	int type = 0;
 	int int_value;
-	int64_t ll_value;
+	//int64_t ll_value;
 	double double_value;
 	const char *str_value;
 	void *value = 0;
-	const char *data;
+
+	*found = 1;
+	switch (type) {
+		case DBUS_TYPE_BOOLEAN:
+			if (json_object_get_type(param) != json_type_boolean) {
+				bridge_request_json_service_error(self, id,
+					"boolean value expected.");
+				return EINVAL;
+			}
+			int_value = json_object_get_boolean(param);
+			value = &int_value;
+			break;
+		case DBUS_TYPE_DOUBLE:
+			if (json_object_get_type(param) != json_type_double) {
+				bridge_request_json_service_error(self, id,
+					"double value expected.");
+				return EINVAL;
+			}
+			double_value = json_object_get_double(param);
+			value = &double_value;
+			break;
+		case DBUS_TYPE_BYTE:
+		case DBUS_TYPE_INT16:
+		case DBUS_TYPE_UINT16:
+		case DBUS_TYPE_INT32:
+		case DBUS_TYPE_UINT32:
+		case DBUS_TYPE_INT64:
+		case DBUS_TYPE_UINT64:
+			if (json_object_get_type(param) != json_type_int) {
+				bridge_request_json_service_error(self, id,
+					"integer value expected.");
+				FCGX_FPrintF(self->request.err, "sig: #%c#\n", type);
+				return EINVAL;
+			}
+			int_value = json_object_get_int(param);
+			value = &int_value;
+			break;
+		case DBUS_TYPE_STRING:
+		case DBUS_TYPE_OBJECT_PATH:
+		case DBUS_TYPE_SIGNATURE:
+			if (json_object_get_type(param) != json_type_string) {
+				bridge_request_json_service_error(self, id,
+					"string value expected.");
+				return EINVAL;
+			}
+			str_value = json_object_get_string(param);
+			value = &str_value;
+			break;
+		default:
+			*found = 0;
+			return 0;
+	}
+	if (!dbus_message_iter_append_basic(it, type, value)) {
+		bridge_request_json_service_error(self, id,
+			"out of memory.");
+		return ENOMEM;
+	}
+	return 0;
+}
+
+int sig_single(const char *sig)
+{
+	const char *p;
+	const char *start;
+	int depth;
+
+	start = sig;
+	p = start;
+
+	while (*p == DBUS_TYPE_ARRAY)
+		++p;
+
+	if (*p == DBUS_STRUCT_BEGIN_CHAR) {
+
+		depth = 1;
+
+		while (1) {
+			++p;
+			if (*p == 0)
+				return -1;
+			if (*p == DBUS_STRUCT_BEGIN_CHAR)
+				depth += 1;
+			else if (*p == DBUS_STRUCT_END_CHAR) {
+				depth -= 1;
+				if (depth == 0) {
+					++p;
+					break;
+				}
+			}
+		}
+	}
+	else if (*p == DBUS_DICT_ENTRY_BEGIN_CHAR) {
+
+		depth = 1;
+
+		while (1) {
+			++p;
+			if (*p == 0)
+				return -1;
+			if (*p == DBUS_DICT_ENTRY_BEGIN_CHAR)
+				depth += 1;
+			else if (*p == DBUS_DICT_ENTRY_END_CHAR) {
+				depth -= 1;
+				if (depth == 0) {
+					++p;
+					break;
+				}
+			}
+		}
+	}
+	else {
+		++p;
+	}
+	return (int) (p - start);
+}
+
+#define BSIZE 255
+
+int bridge_request_dbus_params_parse(bridge_request_t *self, int id,
+				     struct json_object *params,
+				     int *idx, const char *sig,
+				     DBusMessageIter *it)
+{
+	DBusMessageIter args;
+	struct json_object *tmp;
+	int len;
+	int found, ret;
+	int type;
+	char buffer[BSIZE+1];
+	int c;
 
 	len = json_object_array_length(params);
 
-	for (i = 0; i < len; ++i) {
-		tmp = json_object_array_get_idx(params, i);
-		if (json_object_get_type(tmp) != json_type_string) {
-			bridge_request_json_error(self, id, error_origin_server,
-						  error_code_illegal_service,
-						  "unsupported json argument type.");
+	while ((*idx < len) && *sig) {
+		tmp = json_object_array_get_idx(params, *idx);
+
+		type = *sig;
+		++sig;
+		if ((ret = bridge_request_dbus_params_basic(self, id, tmp, type,
+				it, &found)) != 0)
+			return ret;
+
+		if (found) {
+			++(*idx);
+			continue;
+		}
+
+		if ((type != DBUS_TYPE_VARIANT) && (type != DBUS_TYPE_ARRAY)) {
+			bridge_request_json_service_error(self, id,
+				"unsupported json argument type.");
+			FCGX_FPrintF(self->request.err, "sig: #%s# %d\n", *sig, *idx);
 			return EINVAL;
 		}
-		data = json_object_get_string(tmp);
-		type = data[0];
-		switch (data[0]) {
-			case DBUS_TYPE_BOOLEAN:
-				int_value = (strcasecmp(data+1, "true") == 0);
-				value = &int_value;
+		if ((c = sig_single(sig)) < 0) {
+			bridge_request_json_service_error(self, id,
+				"invalid signature.");
+			return EINVAL;
+		}
+		if (c > BSIZE) {
+			bridge_request_json_service_error(self, id,
+				"signature too complex.");
+			return EINVAL;
+		}
+		memcpy(buffer, sig, c);
+		buffer[c] = 0;
+		dbus_message_iter_open_container(it, type, buffer, &args);
+		switch (type) {
+			case DBUS_TYPE_VARIANT:
+				ret = bridge_request_dbus_params_parse(self,
+					id, params, idx, buffer, &args);
+				if (ret != 0)
+					return EINVAL;
 				break;
-			case DBUS_TYPE_DOUBLE:
-				double_value = atof(data+1);
-				value = &double_value;
+			case DBUS_TYPE_ARRAY: {
+				int len = json_object_array_length(tmp);
+				int aIdx = 0;
+				while (aIdx < len) {
+					ret = bridge_request_dbus_params_parse(self,
+						id, tmp, &aIdx, buffer, &args);
+					if (ret != 0)
+						return EINVAL;
+				}
 				break;
-			case DBUS_TYPE_BYTE:
-			case DBUS_TYPE_INT16:
-			case DBUS_TYPE_UINT16:
-			case DBUS_TYPE_INT32:
-			case DBUS_TYPE_UINT32:
-				int_value = atoi(data+1);
-				value = &int_value;
-				break;
-			case DBUS_TYPE_INT64:
-			case DBUS_TYPE_UINT64:
-				ll_value = atoll(data+1);
-				value = &ll_value;
-			case DBUS_TYPE_STRING:
-			case DBUS_TYPE_OBJECT_PATH:
-			case DBUS_TYPE_SIGNATURE:
-				str_value = data+1;
-				value = &str_value;
-				break;
+			}
 			default:
-				bridge_request_json_error(self, id, error_origin_server,
-							  error_code_illegal_service,
-							  "unsupported json argument type.");
 				return EINVAL;
 		}
-		if (!dbus_message_iter_append_basic(it, type, value)) {
-			bridge_request_json_error(self, id, error_origin_server,
-						  error_code_illegal_service,
-						  "out of memory.");
-			return ENOMEM;
-		}
+		dbus_message_iter_close_container(it, &args);
+		sig += c;
+
 	}
 	return 0;
+}
+
+int bridge_request_dbus_params(bridge_request_t *self, int id,
+			       struct json_object *params,
+			       DBusMessageIter *it)
+{
+	struct json_object *tmp;
+	const char *sig;
+	int idx = 1;
+
+	if (json_object_array_length(params) == 0)
+		return 0;
+	tmp = json_object_array_get_idx(params, 0);
+	if (json_object_get_type(tmp) != json_type_string) {
+		bridge_request_json_service_error(self, id,
+			"First Argument must be the signature string.");
+		return EINVAL;
+	}
+	sig = json_object_get_string(tmp);
+
+	return bridge_request_dbus_params_parse(self, id, params, &idx, sig, it);
+}
+
+int bridge_request_json_params(bridge_request_t *self, int id, DBusMessageIter *it,
+			       struct json_object **result);
+
+int bridge_request_json_params_parse(bridge_request_t *self, int id, DBusMessageIter *it,
+				     struct json_object **result, const char **key)
+{
+	if (key)
+		*key = 0;
+	*result = 0;
+	switch (dbus_message_iter_get_arg_type(it)) {
+		case DBUS_TYPE_STRING:
+		case DBUS_TYPE_SIGNATURE:
+		case DBUS_TYPE_OBJECT_PATH: {
+			char *value;
+			dbus_message_iter_get_basic(it, &value);
+			*result = json_object_new_string(value);
+			break;
+		}
+		case DBUS_TYPE_INT16:
+		case DBUS_TYPE_UINT16:
+		case DBUS_TYPE_INT32:
+		case DBUS_TYPE_UINT32:
+		case DBUS_TYPE_BYTE: {
+			int value;
+			dbus_message_iter_get_basic(it, &value);
+			*result = json_object_new_int(value);
+			break;
+		}
+		case DBUS_TYPE_DOUBLE: {
+			double value;
+			dbus_message_iter_get_basic(it, &value);
+			*result = json_object_new_double(value);
+			break;
+		}
+		case DBUS_TYPE_BOOLEAN: {
+			int value;
+			dbus_message_iter_get_basic(it, &value);
+			*result = json_object_new_boolean(value);
+			break;
+		}
+		case DBUS_TYPE_ARRAY:
+		case DBUS_TYPE_VARIANT: {
+			DBusMessageIter args;
+			dbus_message_iter_recurse(it, &args);
+			bridge_request_json_params(self, id, &args, result);
+			break;
+		}
+		case DBUS_TYPE_DICT_ENTRY: {
+			DBusMessageIter args;
+			if (!key)
+				break;
+			dbus_message_iter_recurse(it, &args);
+			if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
+				bridge_request_json_service_error(self, id,
+					"dictionary with non-string keys not supported.");
+				break;
+			}
+			dbus_message_iter_get_basic(&args, key);
+			if (!dbus_message_iter_has_next(&args))
+				break;
+			dbus_message_iter_next(&args);
+			bridge_request_json_params_parse(self, id, &args, result, 0);
+			break;
+		}
+		default:
+			break;
+	}
+	return *result ? 0 : EINVAL;
 }
 
 int bridge_request_json_params(bridge_request_t *self, int id, DBusMessageIter *it,
 			       struct json_object **result)
 {
 	struct json_object *tmp;
-	struct json_object *array = 0;
+	const char *key;
+	int is_array = 0;
 
-	if (dbus_message_iter_has_next(it))
-		array = json_object_new_array();
+	*result = 0;
+	is_array = dbus_message_iter_has_next(it);
 
 	do {
-		switch (dbus_message_iter_get_arg_type(it)) {
-			case DBUS_TYPE_STRING:
-			case DBUS_TYPE_SIGNATURE:
-			case DBUS_TYPE_OBJECT_PATH: {
-				char *value;
-				dbus_message_iter_get_basic(it, &value);
-				tmp = json_object_new_string(value);
-				break;
-			}
-			case DBUS_TYPE_INT16:
-			case DBUS_TYPE_UINT16:
-			case DBUS_TYPE_INT32:
-			case DBUS_TYPE_BYTE: {
-				int value;
-				dbus_message_iter_get_basic(it, &value);
-				tmp = json_object_new_int(value);
-				break;
-			}
-			case DBUS_TYPE_DOUBLE: {
-				double value;
-				dbus_message_iter_get_basic(it, &value);
-				tmp = json_object_new_double(value);
-				break;
-			}
-			case DBUS_TYPE_BOOLEAN: {
-				int value;
-				dbus_message_iter_get_basic(it, &value);
-				tmp = json_object_new_boolean(value);
-				break;
-			}
-			default:
-				tmp = 0;
-				break;
-		}
+		bridge_request_json_params_parse(self, id, it, &tmp, &key);
 		if (!tmp) {
 			bridge_request_json_error(self, id, error_origin_server,
 						  error_code_illegal_service,
 						  "unsupported dbus argument type.");
-				return EINVAL;
+			FCGX_FPrintF(self->request.err, "type: %c\n", dbus_message_iter_get_arg_type(it));
+			return EINVAL;
 		}
-		if (array)
-			json_object_array_add(array, tmp);
-	} while (dbus_message_iter_next(it));
 
-	if (array)
-		*result = array;
-	else
-		*result = tmp;
+		if (key != 0) {
+			if (!*result)
+				*result = json_object_new_object();
+			json_object_object_add(*result, key, tmp);
+		}
+		else if (is_array) {
+			if (!*result)
+				*result = json_object_new_array();
+			json_object_array_add(*result, tmp);
+		}
+		else
+			*result = tmp;
+	} while (dbus_message_iter_next(it));
 
 	return 0;
 }

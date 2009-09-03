@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	if (argc == 2)
 		socket = argv[1];
 
-	if ((ret = bridge_init(&bridge, 0)) != 0) {
+	if ((ret = bridge_init(&bridge, socket)) != 0) {
 		fprintf(stderr, "bridge_init failed");
 		goto out_return;
 	}

@@ -53,8 +53,10 @@ int bridge_init(bridge_t *self, const char *socket_path)
 		return EINVAL;
 	}
 
-	if ((ret = bridge_request_init(&self->request, dbus_connection, socket)) != 0)
+	if ((ret = bridge_request_init(&self->request, dbus_connection, socket)) != 0) {
+		fprintf(stdout, "bridge_request_init failed: %d", ret);
 		return ret;
+	}
 
 	return 0;
 }
