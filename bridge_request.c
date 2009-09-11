@@ -22,7 +22,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include <json_tokener.h>
+#define __STRICT_ANSI__
+#include <json.h>
 #include <dbus/dbus.h>
 
 #include "bridge_request.h"
@@ -156,7 +157,7 @@ int _json_object_object_getstring(struct json_object *obj, char *key, const char
 
 int bridge_request_dbus_params_basic(bridge_request_t *self, int id,
 				     struct json_object *param, int type,
-				     DBusMessageIter *it, int *found)
+				     DBusMessageIter *it)
 {
 	int int_value;
 	//int64_t ll_value;
@@ -164,7 +165,6 @@ int bridge_request_dbus_params_basic(bridge_request_t *self, int id,
 	const char *str_value;
 	void *value = 0;
 
-	*found = 1;
 	switch (type) {
 		case DBUS_TYPE_BOOLEAN:
 			if (json_object_get_type(param) != json_type_boolean) {
@@ -194,7 +194,6 @@ int bridge_request_dbus_params_basic(bridge_request_t *self, int id,
 			if (json_object_get_type(param) != json_type_int) {
 				bridge_request_json_service_error(self, id,
 					"integer value expected.");
-				FCGX_FPrintF(self->request.err, "sig: #%c#\n", type);
 				return EINVAL;
 			}
 			int_value = json_object_get_int(param);
@@ -212,7 +211,6 @@ int bridge_request_dbus_params_basic(bridge_request_t *self, int id,
 			value = &str_value;
 			break;
 		default:
-			*found = 0;
 			return 0;
 	}
 	if (!dbus_message_iter_append_basic(it, type, value)) {
@@ -223,136 +221,184 @@ int bridge_request_dbus_params_basic(bridge_request_t *self, int id,
 	return 0;
 }
 
-int sig_single(const char *sig)
-{
-	const char *p;
-	const char *start;
-	int depth;
+int bridge_request_dbus_params_element(bridge_request_t *self, int id,
+				       struct json_object *element,
+				       DBusSignatureIter *sigIt,
+				       DBusMessageIter *it);
 
-	start = sig;
-	p = start;
-
-	while (*p == DBUS_TYPE_ARRAY)
-		++p;
-
-	if (*p == DBUS_STRUCT_BEGIN_CHAR) {
-
-		depth = 1;
-
-		while (1) {
-			++p;
-			if (*p == 0)
-				return -1;
-			if (*p == DBUS_STRUCT_BEGIN_CHAR)
-				depth += 1;
-			else if (*p == DBUS_STRUCT_END_CHAR) {
-				depth -= 1;
-				if (depth == 0) {
-					++p;
-					break;
-				}
-			}
-		}
-	}
-	else if (*p == DBUS_DICT_ENTRY_BEGIN_CHAR) {
-
-		depth = 1;
-
-		while (1) {
-			++p;
-			if (*p == 0)
-				return -1;
-			if (*p == DBUS_DICT_ENTRY_BEGIN_CHAR)
-				depth += 1;
-			else if (*p == DBUS_DICT_ENTRY_END_CHAR) {
-				depth -= 1;
-				if (depth == 0) {
-					++p;
-					break;
-				}
-			}
-		}
-	}
-	else {
-		++p;
-	}
-	return (int) (p - start);
-}
-
-#define BSIZE 255
-
-int bridge_request_dbus_params_parse(bridge_request_t *self, int id,
-				     struct json_object *params,
-				     int *idx, const char *sig,
-				     DBusMessageIter *it)
+int bridge_request_dbus_params_dict(bridge_request_t *self, int id,
+				    struct json_object *element,
+				    DBusSignatureIter *sigIt,
+				    DBusMessageIter *it)
 {
 	DBusMessageIter args;
-	struct json_object *tmp;
-	int len;
-	int found, ret;
+	DBusSignatureIter sigArgs;
+	int ret;
+
+	dbus_signature_iter_recurse(sigIt, &sigArgs);
+
+	if (dbus_signature_iter_get_current_type(&sigArgs) != DBUS_TYPE_STRING) {
+		bridge_request_json_service_error(self, id,
+			"string dict key type expected.");
+		return EINVAL;
+	}
+	dbus_signature_iter_next(&sigArgs);
+
+	if (json_object_get_type(element) != json_type_object) {
+		bridge_request_json_service_error(self, id,
+			"object expected.");
+		return EINVAL;
+	}
+	json_object_object_foreach(element, key, tmp) {
+		DBusSignatureIter tmpSigArgs = sigArgs;
+		dbus_message_iter_open_container(it, DBUS_TYPE_DICT_ENTRY, 0,&args);
+		dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &key);
+		
+		ret = bridge_request_dbus_params_element(self, id,
+			tmp, &tmpSigArgs, &args);
+		if (ret != 0)
+			return ret;
+		dbus_message_iter_close_container(it, &args);
+	}
+	return 0;
+}
+
+int bridge_request_dbus_params_array(bridge_request_t *self, int id,
+				     struct json_object *params,
+				     int idx, const char *sig,
+				     DBusMessageIter *it);
+
+int bridge_request_dbus_params_element(bridge_request_t *self, int id,
+				       struct json_object *element,
+				       DBusSignatureIter *sigIt,
+				       DBusMessageIter *it)
+{
 	int type;
-	char buffer[BSIZE+1];
-	int c;
+	int ret;
+
+	type = dbus_signature_iter_get_current_type(sigIt);
+
+	if (dbus_type_is_basic(type)) {
+		if ((ret = bridge_request_dbus_params_basic(self, id,
+				 element, type, it)) != 0) {
+			return ret;
+		}
+	}
+	else if (type == DBUS_TYPE_VARIANT) {
+		struct json_object *tmp;
+		DBusMessageIter args;
+		const char *vSig;
+
+		if (json_object_get_type(element) != json_type_array) {
+			bridge_request_json_service_error(self, id,
+				"array expected.");
+			return EINVAL;
+		}
+		tmp = json_object_array_get_idx(element, 0);
+		if (!tmp) {
+			bridge_request_json_service_error(self, id,
+				"variant signature expected.");
+			return EINVAL;
+		}
+		if (json_object_get_type(tmp) != json_type_string) {
+			bridge_request_json_service_error(self, id,
+				"variant signature expected.");
+			return EINVAL;
+		}
+		vSig = json_object_get_string(tmp);
+		dbus_message_iter_open_container(it, type,
+			 vSig, &args);
+		ret = bridge_request_dbus_params_array(self,
+			id, element, 1, vSig, &args);
+		if (ret != 0)
+			return EINVAL;
+		dbus_message_iter_close_container(it, &args);
+	}
+	else if (type == DBUS_TYPE_ARRAY) {
+		DBusMessageIter args;
+		DBusSignatureIter sigArgs;
+		int cType;
+		char *cSig;
+
+		dbus_signature_iter_recurse(sigIt, &sigArgs);
+		cType = dbus_signature_iter_get_current_type(&sigArgs);
+		cSig = dbus_signature_iter_get_signature(&sigArgs);
+
+		dbus_message_iter_open_container(it, type, cSig, &args);
+		dbus_free(cSig);
+
+		if (cType == DBUS_TYPE_DICT_ENTRY) {
+			ret = bridge_request_dbus_params_dict(self, id,
+				element, &sigArgs, &args);
+			if (ret != 0)
+				return ret;
+		}
+		else {
+			int i, len;
+
+			if (json_object_get_type(element) != json_type_array) {
+				bridge_request_json_service_error(self, id,
+					"array expected.");
+				return EINVAL;
+			}
+			len = json_object_array_length(element);
+			for (i = 0; i < len; ++i) {
+				struct json_object *tmp;
+				DBusSignatureIter tmpSigArgs = sigArgs;
+
+				tmp = json_object_array_get_idx(element, i);
+				if (!tmp) {
+					bridge_request_json_service_error(self, id,
+						"value expected.");
+					return EINVAL;
+				}
+				ret = bridge_request_dbus_params_element(self, id,
+					tmp, &tmpSigArgs, &args);
+				if (ret != 0)
+					return ret;
+			}
+		}
+		dbus_message_iter_close_container(it, &args);
+	}
+	else {
+		bridge_request_json_service_error(self, id,
+			"unsupported json argument type.");
+		return EINVAL;
+	}
+	return 0;
+}
+
+int bridge_request_dbus_params_array(bridge_request_t *self, int id,
+				     struct json_object *params,
+				     int idx, const char *sig,
+				     DBusMessageIter *it)
+{
+	DBusSignatureIter sigIt;
+	struct json_object *element;
+	int i, ret, len;
+
+	if (!dbus_signature_validate(sig, 0)) {
+		bridge_request_json_service_error(self, id,
+			"invalid argument signature.");
+		return EINVAL;
+	}
+	dbus_signature_iter_init(&sigIt, sig);
 
 	len = json_object_array_length(params);
 
-	while ((*idx < len) && *sig) {
-		tmp = json_object_array_get_idx(params, *idx);
-
-		type = *sig;
-		++sig;
-		if ((ret = bridge_request_dbus_params_basic(self, id, tmp, type,
-				it, &found)) != 0)
+	for (i = idx; i < len; ++i) {
+		element = json_object_array_get_idx(params, i);
+		if (!element) {
+			bridge_request_json_service_error(self, id,
+				"value expected.");
+			return EINVAL;
+		}
+		ret = bridge_request_dbus_params_element(self, id,
+			element, &sigIt, it);
+		if (ret != 0)
 			return ret;
-
-		if (found) {
-			++(*idx);
-			continue;
-		}
-
-		if ((type != DBUS_TYPE_VARIANT) && (type != DBUS_TYPE_ARRAY)) {
-			bridge_request_json_service_error(self, id,
-				"unsupported json argument type.");
-			FCGX_FPrintF(self->request.err, "sig: #%s# %d\n", *sig, *idx);
-			return EINVAL;
-		}
-		if ((c = sig_single(sig)) < 0) {
-			bridge_request_json_service_error(self, id,
-				"invalid signature.");
-			return EINVAL;
-		}
-		if (c > BSIZE) {
-			bridge_request_json_service_error(self, id,
-				"signature too complex.");
-			return EINVAL;
-		}
-		memcpy(buffer, sig, c);
-		buffer[c] = 0;
-		dbus_message_iter_open_container(it, type, buffer, &args);
-		switch (type) {
-			case DBUS_TYPE_VARIANT:
-				ret = bridge_request_dbus_params_parse(self,
-					id, params, idx, buffer, &args);
-				if (ret != 0)
-					return EINVAL;
-				break;
-			case DBUS_TYPE_ARRAY: {
-				int len = json_object_array_length(tmp);
-				int aIdx = 0;
-				while (aIdx < len) {
-					ret = bridge_request_dbus_params_parse(self,
-						id, tmp, &aIdx, buffer, &args);
-					if (ret != 0)
-						return EINVAL;
-				}
-				break;
-			}
-			default:
-				return EINVAL;
-		}
-		dbus_message_iter_close_container(it, &args);
-		sig += c;
-
+		if (!dbus_signature_iter_next(&sigIt))
+			break;
 	}
 	return 0;
 }
@@ -363,11 +409,23 @@ int bridge_request_dbus_params(bridge_request_t *self, int id,
 {
 	struct json_object *tmp;
 	const char *sig;
-	int idx = 1;
 
+	/*
+	 * expect [ "<signature>", <data> ]
+	 */
+	if (json_object_get_type(params) != json_type_array) {
+		bridge_request_json_service_error(self, id,
+			"array expected.");
+		return EINVAL;
+	}
 	if (json_object_array_length(params) == 0)
 		return 0;
 	tmp = json_object_array_get_idx(params, 0);
+	if (!tmp) {
+		bridge_request_json_service_error(self, id,
+			"signature string expected.");
+		return EINVAL;
+	}
 	if (json_object_get_type(tmp) != json_type_string) {
 		bridge_request_json_service_error(self, id,
 			"First Argument must be the signature string.");
@@ -375,7 +433,7 @@ int bridge_request_dbus_params(bridge_request_t *self, int id,
 	}
 	sig = json_object_get_string(tmp);
 
-	return bridge_request_dbus_params_parse(self, id, params, &idx, sig, it);
+	return bridge_request_dbus_params_array(self, id, params, 1, sig, it);
 }
 
 int bridge_request_json_params(bridge_request_t *self, int id, DBusMessageIter *it,
