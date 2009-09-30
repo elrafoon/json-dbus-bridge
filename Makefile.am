@@ -25,6 +25,7 @@ json_dbus_bridge_SOURCES = \
 
 json_dbus_bridge_LDADD = \
 	-lfcgi \
+	-levent \
 	$(dbus_LIBS) \
 	$(json_LIBS)
 

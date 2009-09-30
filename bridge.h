@@ -23,12 +23,15 @@
 
 #define SOCKET_BACKLOG 10
 
-typedef struct bridge bridge_t;
+#include <event.h>
 
 #include "bridge_request.h"
 
 struct bridge {
-	bridge_request_t request;
+	bridge_request_t *head;
+	DBusConnection *dbus_connection;
+	int socket;
+	struct event_base *event_base;
 };
 
 int bridge_init(bridge_t *self, const char *socket_path);

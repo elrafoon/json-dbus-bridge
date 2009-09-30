@@ -26,6 +26,7 @@
 #include "fcgiapp.h"
 
 typedef struct bridge_request bridge_request_t;
+typedef struct bridge bridge_t;
 
 typedef enum {
 	error_origin_server = 1,
@@ -45,11 +46,14 @@ typedef enum {
 
 struct bridge_request {
 	FCGX_Request request;
+	int id;
 	struct json_tokener *tokener;
 	DBusConnection *dbus_connection;
+	bridge_t *bridge;
+	bridge_request_t *next;
 };
 
-int bridge_request_init(bridge_request_t *self, DBusConnection *dbus_connection, int socket);
+int bridge_request_init(bridge_request_t *self, bridge_t *bridge, DBusConnection *dbus_connection, int socket);
 int bridge_request_destroy(bridge_request_t *self);
 
 int bridge_request_accept(bridge_request_t *self);
