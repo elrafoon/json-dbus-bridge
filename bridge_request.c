@@ -446,8 +446,10 @@ int bridge_request_json_params(bridge_request_t *self, DBusMessageIter *it,
 int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it,
 				     struct json_object **result, const char **key)
 {
-	if (key)
-		*key = 0;
+	int ret;
+	char *unused;
+
+	*key = 0;
 	*result = 0;
 	switch (dbus_message_iter_get_arg_type(it)) {
 		case DBUS_TYPE_STRING:
@@ -484,30 +486,37 @@ int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it
 		case DBUS_TYPE_VARIANT: {
 			DBusMessageIter args;
 			dbus_message_iter_recurse(it, &args);
-			bridge_request_json_params(self, &args, result);
+			ret = bridge_request_json_params(self, &args, result);
+			if (ret != 0)
+				return ret;
 			break;
 		}
 		case DBUS_TYPE_DICT_ENTRY: {
 			DBusMessageIter args;
-			if (!key)
-				break;
 			dbus_message_iter_recurse(it, &args);
 			if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
 				bridge_request_error(self,
 					"dictionary with non-string keys not supported.");
-				break;
+				return EINVAL;
 			}
 			dbus_message_iter_get_basic(&args, key);
 			if (!dbus_message_iter_has_next(&args))
 				break;
 			dbus_message_iter_next(&args);
-			bridge_request_json_params_parse(self, &args, result, 0);
+			ret = bridge_request_json_params_parse(self, &args, result, &unused);
+			if (ret != 0)
+				return ret;
 			break;
 		}
 		default:
 			break;
 	}
-	return *result ? 0 : EINVAL;
+	if (!*result) {
+		bridge_request_error(self,
+			"Unexpected error while parsing D-Bus arguments.");
+		return EINVAL;
+	}
+	return 0;
 }
 
 int bridge_request_json_params(bridge_request_t *self, DBusMessageIter *it,
@@ -539,8 +548,10 @@ int bridge_request_json_params(bridge_request_t *self, DBusMessageIter *it,
 				*result = json_object_new_array();
 			json_object_array_add(*result, tmp);
 		}
-		else
+		else {
 			*result = tmp;
+			break;
+		}
 	} while (dbus_message_iter_next(it));
 
 	return 0;
@@ -604,19 +615,32 @@ int bridge_request_to_dbus(bridge_request_t *self, struct json_object *in_json,
 int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 {
 	DBusMessageIter it;
-	struct json_object *result;
+	DBusError err;
+	struct json_object *result = 0;
 	struct json_object *out_json;
-	int ret;
+	int ret = 0;
+
+	if (dbus_message_get_type(in_dbus) == DBUS_MESSAGE_TYPE_ERROR) {
+		dbus_error_init(&err);
+		dbus_set_error_from_message (&err, in_dbus);
+		bridge_request_error(self, err.message ? err.message : err.name);
+		dbus_error_free(&err);
+		ret = EINVAL;
+		goto finish;
+	}
 
 	if (dbus_message_iter_init(in_dbus, &it)) {
-		if ((ret = bridge_request_json_params(self, &it, &result)) != 0)
+		if ((ret = bridge_request_json_params(self, &it, &result)) != 0) {
+			if (result)
+				json_object_put(result);
 			goto finish;
+		}
 	}
-	else
-		result = 0;
 
 	if ((ret = bridge_request_create_response(self, &out_json, 0, result)) != 0) {
 		bridge_request_error(self, "Out of memory.");
+		if (result)
+			json_object_put(result);
 	}
 	else {
 		bridge_request_transmit(self, out_json);
@@ -629,7 +653,7 @@ finish:
 	FCGX_Finish_r(&self->request);
 	self->next = self->bridge->head;
 	self->bridge->head = self;
-	return 0;
+	return ret;
 }
 
 void _dbus_reply_notify_handler(DBusPendingCall *pending, void *user_data)
