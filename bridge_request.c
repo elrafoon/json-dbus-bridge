@@ -610,7 +610,7 @@ int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 
 	if (dbus_message_iter_init(in_dbus, &it)) {
 		if ((ret = bridge_request_json_params(self, &it, &result)) != 0)
-			return ret;
+			goto finish;
 	}
 	else
 		result = 0;
@@ -618,10 +618,12 @@ int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 	if ((ret = bridge_request_create_response(self, &out_json, 0, result)) != 0) {
 		bridge_request_error(self, "Out of memory.");
 	}
+	else {
+		bridge_request_transmit(self, out_json);
+		json_object_put(out_json);
+	}
 
-	bridge_request_transmit(self, out_json);
-	json_object_put(out_json);
-
+finish:
 	dbus_message_unref(in_dbus);
 
 	FCGX_Finish_r(&self->request);
