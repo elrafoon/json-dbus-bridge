@@ -177,13 +177,14 @@ void bridge_handle_cgi(evutil_socket_t s, short flags, void *data)
 		}
 	}
 	request = self->head;
-	self->head = request->next;
-	request->next = 0;
 
 	if ((ret = bridge_request_accept(request)) != 0)
 		return;
 	if ((ret = bridge_request_handle(request)) != 0)
 		return;
+
+	self->head = request->next;
+	request->next = 0;
 }
 
 int bridge_init(bridge_t *self, const char *socket_path)

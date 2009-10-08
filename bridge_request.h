@@ -51,6 +51,7 @@ struct bridge_request {
 	DBusConnection *dbus_connection;
 	bridge_t *bridge;
 	bridge_request_t *next;
+	struct json_object *response;
 };
 
 int bridge_request_init(bridge_request_t *self, bridge_t *bridge, DBusConnection *dbus_connection, int socket);

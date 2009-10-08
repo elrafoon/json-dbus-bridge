@@ -40,11 +40,13 @@ int bridge_request_init(bridge_request_t *self, bridge_t *bridge, DBusConnection
 	self->dbus_connection = dbus_connection;
 	self->bridge = bridge;
 	self->next = 0;
+	self->response = json_object_new_object();
 	return 0;
 }
 
 int bridge_request_destroy(bridge_request_t *self)
 {
+	json_object_put(self->response);
 	json_tokener_free(self->tokener);
 	FCGX_Free(&self->request, TRUE);
 	return 0;
@@ -88,31 +90,29 @@ void bridge_request_transmit(bridge_request_t *self, struct json_object *obj)
 void bridge_request_fatal(bridge_request_t *self)
 {
 	FCGX_FPrintF(self->request.out, "Status: 400 Bad Request\r\n\r\n");
+	FCGX_FPrintF(self->request.err, "Status: 400 Bad Request\n");
 }
 
-int bridge_request_create_response(bridge_request_t *self, struct json_object **response,
-				   struct json_object *error, struct json_object *result)
+int bridge_request_send_response(bridge_request_t *self,
+				 struct json_object *error,
+				 struct json_object *result)
 {
-	struct json_object *obj;
+	json_object_object_add(self->response, "id", json_object_new_int(self->id));
+	json_object_object_add(self->response, "error", error);
+	json_object_object_add(self->response, "result", result);
 
-	if (!self)
-		return EINVAL;
+	bridge_request_transmit(self, self->response);
 
-	if ((obj = json_object_new_object()) == 0)
-		return ENOMEM;
+	json_object_object_del(self->response, "error");
+	json_object_object_del(self->response, "result");
 
-	json_object_object_add(obj, "id", json_object_new_int(self->id));
-	json_object_object_add(obj, "error", error);
-	json_object_object_add(obj, "result", result);
-
-	*response = obj;
 	return 0;
 }
 
 void bridge_request_json_error(bridge_request_t *self, error_origin_t origin,
 			       error_code_t code, const char *message)
 {
-	struct json_object *response, *error;
+	struct json_object *error;
 	if ((error = json_object_new_object()) == 0)
 		goto failed;
 
@@ -120,12 +120,10 @@ void bridge_request_json_error(bridge_request_t *self, error_origin_t origin,
 	json_object_object_add(error, "code", json_object_new_int(code));
 	json_object_object_add(error, "message", json_object_new_string((char *)message));
 
-	if (bridge_request_create_response(self, &response, error, 0) != 0)
+	if (bridge_request_send_response(self, error, 0) != 0)
 		goto failed;
 
-	bridge_request_transmit(self, response);
-
-	json_object_put(response);
+	json_object_put(error);
 	return;
 failed:
 	bridge_request_fatal(self);
@@ -133,6 +131,7 @@ failed:
 
 void bridge_request_error(bridge_request_t *self, const char *message)
 {
+	FCGX_FPrintF(self->request.err, "error: %s\n", message);
 	bridge_request_json_error(self, error_origin_server,
 				  error_code_illegal_service, message);
 }
@@ -392,11 +391,6 @@ int bridge_request_dbus_params_array(bridge_request_t *self,
 
 	for (i = idx; i < len; ++i) {
 		element = json_object_array_get_idx(params, i);
-		if (!element) {
-			bridge_request_error(self,
-				"value expected.");
-			return EINVAL;
-		}
 		ret = bridge_request_dbus_params_element(self,
 			element, &sigIt, it);
 		if (ret != 0)
@@ -425,11 +419,6 @@ int bridge_request_dbus_params(bridge_request_t *self,
 	if (json_object_array_length(params) == 0)
 		return 0;
 	tmp = json_object_array_get_idx(params, 0);
-	if (!tmp) {
-		bridge_request_error(self,
-			"signature string expected.");
-		return EINVAL;
-	}
 	if (json_object_get_type(tmp) != json_type_string) {
 		bridge_request_error(self,
 			"First Argument must be the signature string.");
@@ -617,7 +606,6 @@ int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 	DBusMessageIter it;
 	DBusError err;
 	struct json_object *result = 0;
-	struct json_object *out_json;
 	int ret = 0;
 
 	if (dbus_message_get_type(in_dbus) == DBUS_MESSAGE_TYPE_ERROR) {
@@ -630,24 +618,17 @@ int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 	}
 
 	if (dbus_message_iter_init(in_dbus, &it)) {
-		if ((ret = bridge_request_json_params(self, &it, &result)) != 0) {
-			if (result)
-				json_object_put(result);
+		if ((ret = bridge_request_json_params(self, &it, &result)) != 0)
 			goto finish;
-		}
 	}
 
-	if ((ret = bridge_request_create_response(self, &out_json, 0, result)) != 0) {
+	if ((ret = bridge_request_send_response(self, 0, result)) != 0) {
 		bridge_request_error(self, "Out of memory.");
-		if (result)
-			json_object_put(result);
-	}
-	else {
-		bridge_request_transmit(self, out_json);
-		json_object_put(out_json);
 	}
 
 finish:
+	if (result)
+		json_object_put(result);
 	dbus_message_unref(in_dbus);
 
 	FCGX_Finish_r(&self->request);
@@ -683,6 +664,8 @@ int bridge_request_call_json_dbus(bridge_request_t *self, struct json_object *in
 		dbus_pending_call_set_notify(pending, _dbus_reply_notify_handler,
 			 self, 0);
 	}
+	else
+		bridge_request_error(self, "Unexpected D-Bus error.");
 send_fail:
 	dbus_message_unref(msg);
 	return ret;
@@ -697,20 +680,23 @@ int bridge_request_handle(bridge_request_t *self)
 
 	if ((ret = bridge_request_getinput(self, &buffer)) != 0) {
 		bridge_request_fatal(self);
-		return 0;
+		goto out;
 	}
 	in_json = json_tokener_parse_ex(self->tokener, buffer, -1);
 	if (!in_json) {
 		bridge_request_fatal(self);
-		goto out;
+		goto cleanup;
 	}
 
-	bridge_request_call_json_dbus(self, in_json);
+	ret = bridge_request_call_json_dbus(self, in_json);
 
-out:
+cleanup:
 	json_object_put(in_json);
 	json_tokener_reset(self->tokener);
 	free(buffer);
-	return 0;
+out:
+	if (ret != 0)
+		FCGX_Finish_r(&self->request);
+	return ret;
 }
 
