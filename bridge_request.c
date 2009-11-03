@@ -430,17 +430,18 @@ int bridge_request_dbus_params(bridge_request_t *self,
 }
 
 int bridge_request_json_params(bridge_request_t *self, DBusMessageIter *it,
-			       struct json_object **result);
+			       struct json_object **result, int is_array);
 
 int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it,
 				     struct json_object **result, const char **key)
 {
 	int ret;
-	char *unused;
+	const char *unused;
+	int type = dbus_message_iter_get_arg_type(it);
 
 	*key = 0;
 	*result = 0;
-	switch (dbus_message_iter_get_arg_type(it)) {
+	switch (type) {
 		case DBUS_TYPE_STRING:
 		case DBUS_TYPE_SIGNATURE:
 		case DBUS_TYPE_OBJECT_PATH: {
@@ -475,7 +476,7 @@ int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it
 		case DBUS_TYPE_VARIANT: {
 			DBusMessageIter args;
 			dbus_message_iter_recurse(it, &args);
-			ret = bridge_request_json_params(self, &args, result);
+			ret = bridge_request_json_params(self, &args, result, type == DBUS_TYPE_ARRAY);
 			if (ret != 0)
 				return ret;
 			break;
@@ -503,20 +504,25 @@ int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it
 	if (!*result) {
 		bridge_request_error(self,
 			"Unexpected error while parsing D-Bus arguments.");
+		FCGX_FPrintF(self->request.err, "arg: %i\n", dbus_message_iter_get_arg_type(it));
 		return EINVAL;
 	}
 	return 0;
 }
 
 int bridge_request_json_params(bridge_request_t *self, DBusMessageIter *it,
-			       struct json_object **result)
+			       struct json_object **result, int is_array)
 {
 	struct json_object *tmp;
 	const char *key;
-	int is_array = 0;
 
 	*result = 0;
-	is_array = dbus_message_iter_has_next(it);
+
+	/* empty array */
+	if (is_array && dbus_message_iter_get_arg_type(it) == DBUS_TYPE_INVALID) {
+		*result = json_object_new_array();
+		return 0;
+	}
 
 	do {
 		bridge_request_json_params_parse(self, it, &tmp, &key);
@@ -618,7 +624,7 @@ int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 	}
 
 	if (dbus_message_iter_init(in_dbus, &it)) {
-		if ((ret = bridge_request_json_params(self, &it, &result)) != 0)
+		if ((ret = bridge_request_json_params(self, &it, &result, 0)) != 0)
 			goto finish;
 	}
 
