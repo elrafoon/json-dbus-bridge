@@ -69,7 +69,7 @@ int bridge_request_getinput(bridge_request_t *self, char **data)
 	if (len <= 0)
 		return EINVAL;
 
-	if ((buffer = malloc(len)) == 0) {
+	if ((buffer = malloc(len+1)) == 0) {
 		FCGX_FPrintF(self->request.err, "out of memory!");
 		return ENOMEM;
 	}
@@ -77,6 +77,7 @@ int bridge_request_getinput(bridge_request_t *self, char **data)
 		FCGX_FPrintF(self->request.err, "Got less data than expected.");
 		return EINVAL;
 	}
+	buffer[len] = '\0';
 	*data = buffer;
 	return 0;
 }
@@ -691,6 +692,7 @@ int bridge_request_handle(bridge_request_t *self)
 	in_json = json_tokener_parse_ex(self->tokener, buffer, -1);
 	if (!in_json) {
 		bridge_request_fatal(self);
+		ret = -1;
 		goto cleanup;
 	}
 
