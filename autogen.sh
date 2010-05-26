@@ -17,6 +17,6 @@ banner() {
 
 banner "autoreconf"
 
-autoreconf --force --install -Wall || exit $?
+autoreconf -I m4 --force --install -Wall || exit $?
 
 banner "Finished"

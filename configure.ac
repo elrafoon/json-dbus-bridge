@@ -4,6 +4,7 @@ esyscmd([echo "define(myversion, $(dir=$(basename $(pwd)); if test \"${dir%%-tru
 
 AC_INIT([json-dbus-bridge], myversion, [bugs@pengutronix.de])
 AC_CONFIG_SRCDIR([src/json-dbus-bridge.c])
+AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 
@@ -48,6 +49,20 @@ PKG_CHECK_MODULES(dbus, $REQUIRES_DBUS,)
 REQUIRES_JSON="json >= 0.8"
 AC_SUBST(REQUIRES_JSON)
 PKG_CHECK_MODULES(json, $REQUIRES_JSON)
+
+#
+# libevent2
+#
+AX_LIB_EVENT(2.0.0)
+if test "x$ax_have_libevent" != "xyes"; then
+	AC_MSG_ERROR([libevent not found.])
+fi
+
+#
+# libfcgi
+#
+AC_CHECK_HEADER(fcgiapp.h,,AC_MSG_ERROR([libfcgi headers not found.]))
+AC_CHECK_LIB(fcgi,,AC_MSG_ERROR([libfcgi not found.]))
 
 #
 # Debugging

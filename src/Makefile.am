@@ -4,6 +4,7 @@ bin_PROGRAMS = \
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/include \
 	-I$(top_builddir)/include \
+    $(LIBEVENT_CPPFLAGS) \
 	$(dbus_CFLAGS) \
 	$(json_CFLAGS)
 
@@ -20,7 +21,7 @@ json_dbus_bridge_SOURCES = \
 
 json_dbus_bridge_LDADD = \
 	-lfcgi \
-	-levent \
+	$(LIBEVENT_LIBS) \
 	$(dbus_LIBS) \
 	$(json_LIBS)
 
