@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style>img{ height: 100px; float: left; }</style>
+	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<script src="helper.js"></script>
+</head>
+<body>
+
+<table border="1" cellpadding="5">
+<tr><th>function</th><th>send</th><th>receive</><tr>
+<tr><td>com.pengutronix.devel.SystemInfo.Ping</td><td id="echo-send">foobar</td><td id="echo-receive"></td></tr>
+<tr><td>com.pengutronix.devel.SystemInfo.Date</td><td id="date-send"></td><td id="date-receive"></td></tr>
+<tr><td>org.freedesktop.DBus.Introspectable.Introspect</td><td id="introspect-send"></td><td id="introspect-receive"></td></tr>
+<tr><td>com.pengutronix.devel.Data.Dump</td><td id="dump-send"></td><td id="dump-receive"></td></tr>
+</table>
+
+<script>
+var rpc = new Rpc("http://localhost:8080/rpc","com.pengutronix.devel.simpleinfo|/");
+
+rpc.callAsync(
+	"com.pengutronix.devel.SystemInfo.Ping",
+	["s", $('#echo-send').text()],
+	function(id, data){
+		$('#echo-receive').html(data)
+	});
+
+window.setInterval('tick()', 1000);
+
+function tick() {
+	rpc.callAsync(
+		"com.pengutronix.devel.SystemInfo.Date",
+		[],
+		function(id, data){
+			var d = new Date(data*1000);
+			$('#date-receive').html(d.toString())
+		});
+}
+
+rpc.callAsync(
+	"org.freedesktop.DBus.Introspectable.Introspect",
+	[],
+	function(id, data){
+		var parser = new DOMParser();
+		var doc = parser.parseFromString(data, "text/xml");
+		var txt = "";
+		var ifaces = doc.getElementsByTagName("interface");
+		for (var i = 0; i < ifaces.length; i++) {
+			var iface = ifaces[i].getAttribute("name")
+			var methods = ifaces[i].getElementsByTagName("method");
+			for (var j = 0; j < methods.length; j++) {
+				txt += iface + "." + methods[j].getAttribute("name") + "<br/>";
+			}
+			txt += "<br/>";
+		}
+		$('#introspect-receive').html(txt);
+	});
+
+var rpc2 = new Rpc("http://localhost:8080/rpc","com.pengutronix.devel.demo1|/");
+
+rpc2.callAsync(
+	"com.pengutronix.devel.Data.Dump",
+	[],
+	function(id, data){
+		var table = document.createElement("table");
+		table.setAttribute("border", "1");
+		table.setAttribute("cellpadding", "2");
+		for (var key in data) {
+			var row = document.createElement("tr");
+			var cell = document.createElement("td");
+			cell.appendChild(document.createTextNode(key));
+			row.appendChild(cell);
+			var ll = data[key];
+			for (var i = 0; i < ll.length; i++) {
+				var cell = document.createElement("td");
+				cell.appendChild(document.createTextNode(String(ll[i])));
+				row.appendChild(cell);
+			}
+			table.appendChild(row);
+		}
+		$('#dump-receive').append(table);
+		var x = $('#dump-receive');
+	});
+
+
+</script>
+</body>
+</html>

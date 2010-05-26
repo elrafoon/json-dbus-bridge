@@ -7,5 +7,7 @@ MAINTAINERCLEANFILES = \
 
 EXTRA_DIST = \
 	dbus-python-service.py \
+	helper.js \
+	index.html \
 	simple-test.sh
 
