@@ -86,6 +86,7 @@ fi
 
 AC_CONFIG_FILES([
 	demo/dbus-simple-service/Makefile
+	demo/lighttpd.conf
 	demo/Makefile
 	src/Makefile
 	Makefile

@@ -1,0 +1,37 @@
+server.document-root = "@abs_srcdir@"
+
+server.port		= 8080
+server.bind		= "localhost"
+server.tag		= "lighttpd"
+
+server.errorlog		= "@abs_builddir@/error.log"
+
+server.modules		= (
+	"mod_fastcgi",
+)
+
+# mimetype mapping
+mimetype.assign		= (
+	".gif"		=>	"image/gif",
+	".jpg"		=>	"image/jpeg",
+	".jpeg"		=>	"image/jpeg",
+	".png"		=>	"image/png",
+	".css"		=>	"text/css",
+	".html"		=>	"text/html",
+	".htm"		=>	"text/html",
+	".js"		=>	"text/javascript",
+	".xml"		=>	"text/xml",
+)
+
+index-file.names = ( "index.html" )
+
+fastcgi.server = (
+	"/rpc" => ((
+		"bin-path" => "@abs_top_builddir@/src/json-dbus-bridge",
+		"socket" => "@abs_builddir@/json-dbus-bridge.socket",
+		"check-local" => "disable",
+		"mode" => "responder",
+		"max-procs" => 1,
+	)),
+)
+
