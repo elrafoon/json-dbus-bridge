@@ -163,7 +163,7 @@ void bridge_handle_cgi(evutil_socket_t s, short flags, void *data)
 	int ret;
 	(void)s;
 
-	if (!flags & EV_READ)
+	if (!(flags & EV_READ))
 		return;
 
 	if (!self->head) {
