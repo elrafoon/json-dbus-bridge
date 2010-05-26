@@ -2,7 +2,8 @@
 ACLOCAL_AMFLAGS=-I m4
 
 SUBDIRS = \
-	src
+	src \
+	demo
 
 EXTRA_DIST = \
 	autogen.sh

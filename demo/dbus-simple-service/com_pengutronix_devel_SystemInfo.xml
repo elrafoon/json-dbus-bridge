@@ -1,0 +1,19 @@
+<node>
+  <interface name="com.pengutronix.devel.SystemInfo">
+    <method name="Date">
+      <arg type="u" direction="out"/>
+    </method>
+    <method name="Noop">
+    </method>
+    <method name="Ping">
+      <arg type="s" direction="out"/>
+      <arg name="text" type="s" direction="in"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg name="xml_data" type="s" direction="out"/>
+    </method>
+  </interface>
+</node>
+

@@ -85,6 +85,8 @@ fi
 
 
 AC_CONFIG_FILES([
+	demo/dbus-simple-service/Makefile
+	demo/Makefile
 	src/Makefile
 	Makefile
 ])
