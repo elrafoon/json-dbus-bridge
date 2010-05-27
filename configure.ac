@@ -88,9 +88,11 @@ AC_CONFIG_FILES([
 	demo/dbus-simple-service/Makefile
 	demo/lighttpd.conf
 	demo/Makefile
-	demo/run.sh
 	src/Makefile
 	Makefile
+])
+AC_CONFIG_FILES([
+	demo/run.sh
 ], [
 	chmod +x demo/run.sh
 ])
