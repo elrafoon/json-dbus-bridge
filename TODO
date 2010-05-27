@@ -16,4 +16,16 @@ TODO
     - how to avoid denial of service issues?
 
 [ ] D-Bus dictionaries with non-string keys
+    - how to map these?
+      - "[[key, value], [key, value]]"?
+      - JSON object and use the string prepresentation of the key
+
+[ ] calculate the D-Bus parameter signature
+    - It can be derived from the introspection XML and then cached.
+    - This could happen on demand on the bridge, or on the client.
+
+[ ] dynamically create bindings from the introspection XML
+    - a qooxdoo class that created objects for a service.
+    - with functions for each D-Bus message
+    - events/listeners for signals (?)
 
