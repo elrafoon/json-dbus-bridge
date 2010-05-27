@@ -1,0 +1,45 @@
+#!/bin/sh
+
+finish() {
+	kill $simple_service_pid
+	kill $dbus_service_pid
+	kill $lighttpd_pid
+	exit
+}
+
+trap finish SIGINT
+
+"@abs_builddir@/dbus-simple-service/dbus-simple-service" &
+simple_service_pid=$!
+
+"@abs_srcdir@/dbus-python-service.py" &
+dbus_service_pid=$!
+
+/usr/sbin/lighttpd -f "@abs_builddir@/lighttpd.conf" -D &
+lighttpd_pid=$!
+
+echo -n "waiting for lighttpd "
+for i in `seq 10`; do
+	sleep 1
+	echo -n "."
+	@abs_srcdir@/simple-test.sh > /dev/null 2>&1 && break
+done
+
+if [ $? -ne 0 ]; then
+	echo
+	echo
+	echo starting lighttpd failed!
+	finish
+	exit 1
+else
+	echo
+	echo
+	echo lighttpd sucessfully started.
+	echo
+	echo The demo page can be view at http://localhost:8080/
+fi
+
+while [ 1 ]; do
+	sleep 100
+done
+
