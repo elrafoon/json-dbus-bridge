@@ -5,3 +5,6 @@ SUBDIRS = \
 MAINTAINERCLEANFILES = \
 	Makefile.in
 
+EXTRA_DIST = \
+	dbus-python-service.py
+
