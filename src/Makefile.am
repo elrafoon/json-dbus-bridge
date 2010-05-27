@@ -11,6 +11,10 @@ AM_CPPFLAGS = \
 MAINTAINERCLEANFILES = \
 	Makefile.in
 
+noinst_HEADERS = \
+	bridge_request.h \
+	bridge.h
+
 #
 # binary
 #

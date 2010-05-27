@@ -39,5 +39,5 @@ int bridge_destroy(bridge_t *self);
 
 int bridge_run(bridge_t *self);
 
-#endif // BRIDGE_H
+#endif /* BRIDGE_H */
 

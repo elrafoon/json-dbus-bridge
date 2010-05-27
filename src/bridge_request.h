@@ -32,7 +32,7 @@ typedef enum {
 	error_origin_server = 1,
 	error_origin_method = 2,
 	error_origin_transport = 3,
-	error_origin_client = 4,
+	error_origin_client = 4
 } error_origin_t;
 
 typedef enum {
@@ -41,7 +41,7 @@ typedef enum {
 	error_code_class_not_found = 3,
 	error_code_method_not_found = 4,
 	error_code_parameter_missmatch = 5,
-	error_code_permission_denied = 6,
+	error_code_permission_denied = 6
 } error_code_t;
 
 struct bridge_request {
@@ -60,5 +60,5 @@ int bridge_request_destroy(bridge_request_t *self);
 int bridge_request_accept(bridge_request_t *self);
 int bridge_request_handle(bridge_request_t *self);
 
-#endif // BRIDGE_REQUEST_H
+#endif /* BRIDGE_REQUEST_H */
 

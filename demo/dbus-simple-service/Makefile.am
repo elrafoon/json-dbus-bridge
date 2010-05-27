@@ -13,6 +13,9 @@ MAINTAINERCLEANFILES = \
 CLEANFILES = \
 	com_pengutronix_devel_SystemInfo_xml.h
 
+noinst_HEADERS = \
+	systeminfo_skel.h
+
 %_xml.h: %.xml
 	echo "#define $(shell echo $@ | tr [a-z] [A-Z] | sed -e "s,-,_,g" | sed -e "s,.H,,g") \\" > $@
 	cat $< | \
@@ -29,7 +32,7 @@ dbus_simple_service_SOURCES = \
 	dbus-simple-service.c \
 	systeminfo_skel.c
 
-systeminfo_skel.c: com_pengutronix_devel_SystemInfo_xml.h
+$(srcdir)/systeminfo_skel.c: com_pengutronix_devel_SystemInfo_xml.h
 
 dbus_simple_service_LDADD = \
 	$(dbus_LIBS)

@@ -23,7 +23,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifndef __STRICT_ANSI__
 #define __STRICT_ANSI__
+#endif
 #include <json.h>
 #include <dbus/dbus.h>
 
@@ -164,7 +166,6 @@ int bridge_request_dbus_params_basic(bridge_request_t *self,
 				     DBusMessageIter *it)
 {
 	int int_value;
-	//int64_t ll_value;
 	double double_value;
 	const char *str_value;
 	void *value = 0;
