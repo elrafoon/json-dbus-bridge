@@ -1,12 +1,19 @@
 
-Example lighttpd config for the json-dbus-bridge:
+Example lighttpd config for the json-dbus-bridge, to start the bridge on
+demand:
 
 fastcgi.server = (
 	"/rpc" => ((
-		"bin-path" => "/usr/bin/sudo -u anon /usr/bin/json-dbus-bridge",
-		"socket" => "/tmp/anon.json-dbus-bridge.socket",
+		"bin-path" => "/usr/bin/json-dbus-bridge",
+		"socket" => "/tmp/json-dbus-bridge.socket",
 		"check-local" => "disable",
 		"mode" => "responder",
+		"max-procs" => 1,
 	))
 )
+
+To connect on an existing bridge (e.g. stated by another user), drop the
+"bin-path" line and start the json-dbus-bridge with the socket name as the
+first parameter. Make sure, that the web-server has the necessary rights to
+open the socket.
 
