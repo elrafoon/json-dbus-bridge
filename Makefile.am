@@ -7,7 +7,9 @@ SUBDIRS = \
 
 EXTRA_DIST = \
 	autogen.sh \
-	README.lighttpd
+	README.lighttpd \
+	README \
+	TODO
 
 MAINTAINERCLEANFILES = \
 	configure \

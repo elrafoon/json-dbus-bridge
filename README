@@ -1,0 +1,57 @@
+json-dbus-bridge
+================
+
+json-dbus-bridge is a fast-cgi application that provides access to D-Bus.
+It accepts JSON-RPC[1] calls as used by qooxdoo[2] and translates these
+into D-Bus calls. Any response is converted back to JSON and sent to the
+client.
+The bridge is completely generic. New D-Bus services can be added without
+modifications to the bridge.
+
+Syntax
+------
+A D-Bus method is identified by
+- bus name
+- object path
+- interface
+- method
+The JSON-RPC used by qooxdoo only knows
+- service
+- method
+This is handled by using "<bus name>|<object path>" as service and
+"<interface>.<method>" as method.
+
+To make a successful D-Bus call, all parameters must be encoded with the
+correct type. Unfortunately not all D-Bus types can be uniquely mapped to
+a JSON type. E.g. int32, uint32, int16, ... are all mapped to a JSON
+number. To generate the correct D-Bus message, the JSON-RPC call must
+contain an extra first parameter with the D-Bus signature of the parameters
+as defined by the D-Bus Specification[3].
+
+A simple JSON-RPC call could look like this:
+
+
+request = {
+  "id": 1,
+  "service":"org.examle|/",
+  "method":"org.Example.Echo"
+  "params": [ "s", "Hello World!" ]
+}
+response = {
+  "id": 1,
+  "error": null,
+  "result": "Hello World!"
+}
+
+Limitations
+-----------
+The bridge cannot handle all D-Bus features:
+- D-Bus Dictionaries are translated into JSON objects. As a result only
+  dictionaries with string keys can be used.
+- Translation of structs is not yet implemented.
+- D-Bus signals are not yet supported.
+
+[1] http://json-rpc.org
+[2] http://qooxdoo.org
+[3] http://dbus.freedesktop.org/doc/dbus-specification.html
+

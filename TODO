@@ -1,0 +1,19 @@
+TODO
+====
+
+[ ] unit tests
+    - via web server
+    - standalone test application
+
+[ ] D-Bus structs
+    - There are no structs in JSON. Maybe an array and the type from the
+      parameter signature.
+
+[ ] D-Bus signals
+    - bridge need to save a state for each client
+    - attach received signals to the state
+    - client can fetch signals with a special call (?)
+    - how to avoid denial of service issues?
+
+[ ] D-Bus dictionaries with non-string keys
+
