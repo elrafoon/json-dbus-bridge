@@ -1,4 +1,5 @@
-bin_PROGRAMS = \
+
+noinst_PROGRAMS = \
 	dbus-simple-service
 
 AM_CPPFLAGS = \
