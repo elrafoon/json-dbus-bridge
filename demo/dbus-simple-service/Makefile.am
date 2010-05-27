@@ -6,13 +6,13 @@ AM_CPPFLAGS = \
 	$(dbus_CFLAGS)
 
 EXTRA_DIST = \
-	com_pengutronix_devel_SystemInfo.xml
+	com_pengutronix_jdb_SystemInfo.xml
 
 MAINTAINERCLEANFILES = \
 	Makefile.in
 
 CLEANFILES = \
-	com_pengutronix_devel_SystemInfo_xml.h
+	com_pengutronix_jdb_SystemInfo_xml.h
 
 noinst_HEADERS = \
 	systeminfo_skel.h
@@ -33,7 +33,7 @@ dbus_simple_service_SOURCES = \
 	dbus-simple-service.c \
 	systeminfo_skel.c
 
-$(srcdir)/systeminfo_skel.c: com_pengutronix_devel_SystemInfo_xml.h
+$(srcdir)/systeminfo_skel.c: com_pengutronix_jdb_SystemInfo_xml.h
 
 dbus_simple_service_LDADD = \
 	$(dbus_LIBS)

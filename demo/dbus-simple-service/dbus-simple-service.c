@@ -84,7 +84,7 @@ int main(void)
 		dbus_error_free(&err);
 		exit(1);
 	}
-	if (dbus_bus_request_name(connection, "com.pengutronix.devel.simpleinfo",
+	if (dbus_bus_request_name(connection, "com.pengutronix.jdb.simpleinfo",
 			 0, &err) < 0) {
 		fprintf(stderr, "couldn't connect to dbus: %s: %s\n",
 			err.name, err.message);

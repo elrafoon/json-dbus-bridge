@@ -1,5 +1,5 @@
 <node>
-  <interface name="com.pengutronix.devel.SystemInfo">
+  <interface name="com.pengutronix.jdb.SystemInfo">
     <method name="Date">
       <arg type="u" direction="out"/>
     </method>

@@ -29,7 +29,7 @@ class Service(dbus.service.Object):
 		self._state = 1
 		dbus.service.Object.__init__(self, None, "/", name)
 
-	@dbus.service.method("com.pengutronix.devel.Data",
+	@dbus.service.method("com.pengutronix.jdb.Data",
 		in_signature='', out_signature='a{sai}')
 	def Dump(self):
 		return {"foo": [1, 2], "bar": [3, 4] }
@@ -38,7 +38,7 @@ if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	session_bus = dbus.SessionBus()
-	name = dbus.service.BusName("com.pengutronix.devel.demo1", session_bus)
+	name = dbus.service.BusName("com.pengutronix.jdb.demo1", session_bus)
 	object = Service(session_bus, name)
 
 	mainloop = gobject.MainLoop()

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 url="http://localhost:8080/rpc"
-data='{"service":"com.pengutronix.devel.simpleinfo|/","method":"com.pengutronix.devel.SystemInfo.Ping","id":0,"params":["s", "foo"]}'
+data='{"service":"com.pengutronix.jdb.simpleinfo|/","method":"com.pengutronix.jdb.SystemInfo.Ping","id":0,"params":["s", "foo"]}'
 
 dd=`wget -O - -q --header="Referer: $url" --post-data="$data" "$url"`
 
@@ -12,7 +12,7 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ "x$dd" != 'x{ "id": 0, "error": null, "result": "foo" }' ]; then
-	echo got wrong data from com.pengutronix.devel.simpleinfo
+	echo got wrong data from com.pengutronix.jdb.simpleinfo
 	echo expected:
 	echo '{ "id": 0, "error": null, "result": "foo" }'
 	echo got:
@@ -20,5 +20,5 @@ if [ "x$dd" != 'x{ "id": 0, "error": null, "result": "foo" }' ]; then
 	exit 1
 fi
 
-echo Fetching data from com.pengutronix.devel.simpleinfo sucessful.
+echo Fetching data from com.pengutronix.jdb.simpleinfo sucessful.
 

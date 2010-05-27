@@ -9,17 +9,17 @@
 
 <table border="1" cellpadding="5">
 <tr><th>function</th><th>send</th><th>receive</><tr>
-<tr><td>com.pengutronix.devel.SystemInfo.Ping</td><td id="echo-send">foobar</td><td id="echo-receive"></td></tr>
-<tr><td>com.pengutronix.devel.SystemInfo.Date</td><td id="date-send"></td><td id="date-receive"></td></tr>
+<tr><td>com.pengutronix.jdb.SystemInfo.Ping</td><td id="echo-send">foobar</td><td id="echo-receive"></td></tr>
+<tr><td>com.pengutronix.jdb.SystemInfo.Date</td><td id="date-send"></td><td id="date-receive"></td></tr>
 <tr><td>org.freedesktop.DBus.Introspectable.Introspect</td><td id="introspect-send"></td><td id="introspect-receive"></td></tr>
-<tr><td>com.pengutronix.devel.Data.Dump</td><td id="dump-send"></td><td id="dump-receive"></td></tr>
+<tr><td>com.pengutronix.jdb.Data.Dump</td><td id="dump-send"></td><td id="dump-receive"></td></tr>
 </table>
 
 <script>
-var rpc = new Rpc("http://localhost:8080/rpc","com.pengutronix.devel.simpleinfo|/");
+var rpc = new Rpc("http://localhost:8080/rpc","com.pengutronix.jdb.simpleinfo|/");
 
 rpc.callAsync(
-	"com.pengutronix.devel.SystemInfo.Ping",
+	"com.pengutronix.jdb.SystemInfo.Ping",
 	["s", $('#echo-send').text()],
 	function(id, data){
 		$('#echo-receive').html(data)
@@ -29,7 +29,7 @@ window.setInterval('tick()', 1000);
 
 function tick() {
 	rpc.callAsync(
-		"com.pengutronix.devel.SystemInfo.Date",
+		"com.pengutronix.jdb.SystemInfo.Date",
 		[],
 		function(id, data){
 			var d = new Date(data*1000);
@@ -56,10 +56,10 @@ rpc.callAsync(
 		$('#introspect-receive').html(txt);
 	});
 
-var rpc2 = new Rpc("http://localhost:8080/rpc","com.pengutronix.devel.demo1|/");
+var rpc2 = new Rpc("http://localhost:8080/rpc","com.pengutronix.jdb.demo1|/");
 
 rpc2.callAsync(
-	"com.pengutronix.devel.Data.Dump",
+	"com.pengutronix.jdb.Data.Dump",
 	[],
 	function(id, data){
 		var table = document.createElement("table");

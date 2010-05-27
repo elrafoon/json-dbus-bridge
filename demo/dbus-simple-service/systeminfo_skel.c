@@ -23,14 +23,14 @@
 #include <stdlib.h>
 
 #include "systeminfo_skel.h"
-#include "com_pengutronix_devel_SystemInfo_xml.h"
+#include "com_pengutronix_jdb_SystemInfo_xml.h"
 
 static const char *introspect_system_info = \
 DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE \
-COM_PENGUTRONIX_DEVEL_SYSTEMINFO_XML \
+COM_PENGUTRONIX_JDB_SYSTEMINFO_XML \
 ;
 
-#define DBUS_INTERFACE_SYSTEMINFO "com.pengutronix.devel.SystemInfo"
+#define DBUS_INTERFACE_SYSTEMINFO "com.pengutronix.jdb.SystemInfo"
 
 DBusMessage *_system_info_error(DBusMessage *message, int err)
 {
