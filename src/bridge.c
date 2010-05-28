@@ -48,7 +48,7 @@ void _bridge_handle_dbus_watch(evutil_socket_t s, short flags, void *data)
 {
 	DBusConnection *connection = dbus_bus_get(DBUS_BUS_SESSION, 0);
 	DBusWatch *watch = (DBusWatch*)data;
-	int f = 0;
+	unsigned int f = 0;
 
 	(void)s;
 
@@ -56,7 +56,8 @@ void _bridge_handle_dbus_watch(evutil_socket_t s, short flags, void *data)
 		f |= DBUS_WATCH_READABLE;
 	if (flags & EV_WRITE)
 		f |= DBUS_WATCH_WRITABLE;
-	dbus_watch_handle(watch, f);
+	if (!dbus_watch_handle(watch, f))
+		return;
 	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
 }
 
@@ -70,7 +71,8 @@ void _bridge_handle_dbus_timeout(evutil_socket_t s, short flags, void *data)
 	if (!(flags & EV_TIMEOUT))
 		return;
 
-	dbus_timeout_handle(timeout);
+	if (!dbus_timeout_handle(timeout))
+		return;
 	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
 }
 
@@ -110,7 +112,6 @@ void _bridge_remove_watch(DBusWatch *watch, void *data)
 	struct event *ev = (struct event*)dbus_watch_get_data(watch);
 	(void)data;
 
-	event_del(ev);
 	event_free(ev);
 	return;
 }
@@ -149,7 +150,6 @@ void _bridge_remove_timeout(DBusTimeout *timeout, void *data)
 	struct event *ev = (struct event*)dbus_timeout_get_data(timeout);
 	(void)data;
 
-	event_del(ev);
 	event_free(ev);
 	return;
 }
@@ -190,6 +190,7 @@ void bridge_handle_cgi(evutil_socket_t s, short flags, void *data)
 int bridge_init(bridge_t *self, const char *socket_path)
 {
 	DBusError dbus_error;
+	struct event *ev;
 
 	if (FCGX_Init() != 0) {
 		fprintf(stdout, "FCGX_Init failed.");
@@ -218,22 +219,24 @@ int bridge_init(bridge_t *self, const char *socket_path)
 
 	self->event_base = event_base_new();
 
-	struct event * ev = event_new(self->event_base, self->socket, EV_READ|EV_PERSIST, bridge_handle_cgi, self);
+	ev = event_new(self->event_base, self->socket, EV_READ|EV_PERSIST, bridge_handle_cgi, self);
 	event_add(ev, 0);
 
-	dbus_connection_set_watch_functions(self->dbus_connection,
-		_bridge_add_watch, _bridge_remove_watch, _bridge_toggle_watch,
-		self, 0);
+	if (!dbus_connection_set_watch_functions(self->dbus_connection,
+			_bridge_add_watch, _bridge_remove_watch,
+			 _bridge_toggle_watch, self, 0))
+		return EINVAL;
 
-	dbus_connection_set_timeout_functions(self->dbus_connection,
-		_bridge_add_timeout, _bridge_remove_timeout, _bridge_toggle_timeout,
-		self, 0);
+	if (!dbus_connection_set_timeout_functions(self->dbus_connection,
+			_bridge_add_timeout, _bridge_remove_timeout,
+			_bridge_toggle_timeout, self, 0))
+		return EINVAL;
 
 	dbus_connection_set_dispatch_status_function(self->dbus_connection,
-		_bridge_dispatch_status, self, 0);
+			_bridge_dispatch_status, self, 0);
 
 	dbus_connection_set_wakeup_main_function(self->dbus_connection,
-		_bridge_wkaeup_main, self, 0);
+			_bridge_wkaeup_main, self, 0);
 
 	return 0;
 }

@@ -71,7 +71,7 @@ int bridge_request_getinput(bridge_request_t *self, char **data)
 	if (len <= 0)
 		return EINVAL;
 
-	if ((buffer = malloc(len+1)) == 0) {
+	if ((buffer = malloc((size_t)len+1)) == 0) {
 		FCGX_FPrintF(self->request.err, "out of memory!");
 		return ENOMEM;
 	}
@@ -247,18 +247,20 @@ int bridge_request_dbus_params_dict(bridge_request_t *self,
 			"string dict key type expected.");
 		return EINVAL;
 	}
-	dbus_signature_iter_next(&sigArgs);
-
-	if (json_object_get_type(element) != json_type_object) {
+	if (!dbus_signature_iter_next(&sigArgs) ||
+			(json_object_get_type(element) != json_type_object)) {
 		bridge_request_error(self,
 			"object expected.");
 		return EINVAL;
 	}
-	json_object_object_foreach(element, key, tmp) {
+#ifndef S_SPLINT_S
+	json_object_object_foreach(element, key, tmp)
+#endif
+	{
 		DBusSignatureIter tmpSigArgs = sigArgs;
 		dbus_message_iter_open_container(it, DBUS_TYPE_DICT_ENTRY, 0,&args);
 		dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &key);
-		
+
 		ret = bridge_request_dbus_params_element(self,
 			tmp, &tmpSigArgs, &args);
 		if (ret != 0)
@@ -461,7 +463,7 @@ int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it
 		case DBUS_TYPE_INT16: {
 			int16_t value = 0;
 			dbus_message_iter_get_basic(it, &value);
-			*result = json_object_new_int(value);
+			*result = json_object_new_int((int)value);
 			break;
 		}
 		case DBUS_TYPE_UINT16:
@@ -633,7 +635,7 @@ int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 
 	if (dbus_message_get_type(in_dbus) == DBUS_MESSAGE_TYPE_ERROR) {
 		dbus_error_init(&err);
-		dbus_set_error_from_message (&err, in_dbus);
+		(void)dbus_set_error_from_message(&err, in_dbus);
 		bridge_request_error(self, err.message ? err.message : err.name);
 		dbus_error_free(&err);
 		ret = EINVAL;
