@@ -79,6 +79,11 @@ class Service(dbus.service.Object):
 	def EchoSTRING(self, val):
 		return val;
 
+	@dbus.service.method("com.pengutronix.jdb.Test.Basic",
+		in_signature='ii', out_signature='i')
+	def SumINT32(self, val1, val2):
+		return val1 + val2;
+
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)

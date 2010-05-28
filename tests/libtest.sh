@@ -45,6 +45,7 @@ jdb_call() {
 	wget -O "$result" --post-data="$data" "$url" > "$debug" 2>&1
 	status=$?
 	if [ $status -ne 0 ]; then
+		echo 1>&2
 		cat "$debug" 1>&2
 	else
 		cat "$result"
@@ -78,7 +79,13 @@ jdb_test() {
 
 	echo -n "$method($params)"
 	local result
-	result=`jdb_call "$data"` || return
+	result=`jdb_call "$data"`
+	if [ $? -ne 0 ]; then
+		echo " Failed:"
+		echo Sent:     $data
+		error_count=$[error_count+1]
+		return 1
+	fi
 	if [ "x$result" != "x$expect" ]; then
 		echo " Failed:"
 		echo Sent:     $data
