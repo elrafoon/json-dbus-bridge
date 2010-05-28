@@ -452,12 +452,19 @@ int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it
 			*result = json_object_new_string(value);
 			break;
 		}
-		case DBUS_TYPE_INT16:
+		case DBUS_TYPE_INT16: {
+			int16_t value = 0;
+			dbus_message_iter_get_basic(it, &value);
+			*result = json_object_new_int(value);
+			break;
+		}
 		case DBUS_TYPE_UINT16:
 		case DBUS_TYPE_INT32:
 		case DBUS_TYPE_UINT32:
+		case DBUS_TYPE_INT64:
+		case DBUS_TYPE_UINT64:
 		case DBUS_TYPE_BYTE: {
-			int value;
+			int value = 0;
 			dbus_message_iter_get_basic(it, &value);
 			*result = json_object_new_int(value);
 			break;
