@@ -397,10 +397,16 @@ int bridge_request_dbus_params_array(bridge_request_t *self,
 			element, &sigIt, it);
 		if (ret != 0)
 			return ret;
-		if (!dbus_signature_iter_next(&sigIt))
-			break;
+		if (!dbus_signature_iter_next(&sigIt)) {
+			if (i+1 == len)
+				return 0;
+			bridge_request_error(self,
+				"Unexpected extra parameter found.");
+			return EINVAL;
+		}
 	}
-	return 0;
+	bridge_request_error(self, "Aditional parameter expexted.");
+	return EINVAL;
 }
 
 int bridge_request_dbus_params(bridge_request_t *self,
