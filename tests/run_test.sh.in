@@ -1,0 +1,47 @@
+#!/bin/sh
+
+. @abs_srcdir@/libtest.sh
+
+finish() {
+	kill $test_service_pid
+	kill $lighttpd_pid
+
+	jdb_status
+	exit $?
+}
+
+trap finish SIGINT
+trap finish SIGQUIT
+
+"@abs_srcdir@/dbus-test-service.py" &
+test_service_pid=$!
+
+/usr/sbin/lighttpd -f "@abs_builddir@/lighttpd.conf" -D &
+lighttpd_pid=$!
+
+JDB_TEST_URL="http://localhost:8080/rpc"
+
+echo -n "waiting for lighttpd "
+for i in `seq 10`; do
+	sleep 1
+	echo -n "."
+	jdb_test_bridge > /dev/null 2>&1 && break
+done
+
+if [ $? -ne 0 ]; then
+	echo
+	echo
+	echo starting lighttpd failed!
+	finish
+	exit 1
+else
+	echo
+	echo
+	echo lighttpd sucessfully started. Running tests
+	echo
+fi
+
+. "@abs_srcdir@/basic_test.sh"
+
+finish
+
