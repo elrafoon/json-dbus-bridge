@@ -603,8 +603,10 @@ int bridge_request_to_dbus(bridge_request_t *self, struct json_object *in_json,
 		return ENOMEM;
 	}
 	dbus_message_iter_init_append(*out_dbus, &it);
-	if ((ret = bridge_request_dbus_params(self, params, &it)) != 0)
+	if ((ret = bridge_request_dbus_params(self, params, &it)) != 0) {
 		dbus_message_unref(*out_dbus);
+		*out_dbus = NULL;
+	}
 
 	return ret;
 }
@@ -660,7 +662,7 @@ int bridge_request_call_json_dbus(bridge_request_t *self, struct json_object *in
 	DBusPendingCall *pending;
 
 	if ((ret = bridge_request_to_dbus(self, in_json, &msg)) != 0)
-		goto send_fail;
+		return ret;
 
 	if (!dbus_connection_send_with_reply(self->dbus_connection, msg,
 				 &pending, -1)) {
