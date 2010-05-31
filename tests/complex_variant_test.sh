@@ -11,4 +11,5 @@ jdb_test_echo EchoVariant v '[ "si", "foo", 33 ]' null "invalid variant signatur
 
 jdb_test_echo EchoVariant v '[ "as", [ "42", "foobar"] ]' '[ "42", "foobar" ]' &&
 jdb_test_echo EchoVariantArray av '[ [ "i", 42 ], ["s", "foobar"] ]' '[ 42, "foobar" ]'
+jdb_test_echo EchoVariantArray av '[["i", 42], ["v", ["s", "foobar"]]]' '[ 42, "foobar" ]'
 

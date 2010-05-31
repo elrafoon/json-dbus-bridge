@@ -78,7 +78,11 @@ jdb_test() {
 	local expect="{ \"id\": $id, \"error\": $error, \"result\": $response }"
 
 	if [ "$JDB_TEST_VERBOSE" = "yes" ]; then
-		echo -n "$method($params)"
+		if [ ${#params} -gt 50 ]; then
+			echo -n "$method(..[${#params}]..)"
+		else
+			echo -n "$method($params)"
+		fi
 	fi
 	local result
 	result=`jdb_call "$data"`

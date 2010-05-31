@@ -109,6 +109,12 @@ class Service(dbus.service.Object):
 	def EchoDict(self, val):
 		return val;
 
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='a{si}', out_signature='as')
+	def DictKeys(self, val):
+		keys = val.keys()
+		keys.sort()
+		return keys
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
