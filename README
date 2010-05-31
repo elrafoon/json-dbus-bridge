@@ -26,10 +26,10 @@ correct type. Unfortunately not all D-Bus types can be uniquely mapped to
 a JSON type. E.g. int32, uint32, int16, ... are all mapped to a JSON
 number. To generate the correct D-Bus message, the JSON-RPC call must
 contain an extra first parameter with the D-Bus signature of the parameters
-as defined by the D-Bus Specification[3].
+as defined by the D-Bus Specification[3]. For the result the signature is
+skipped.
 
 A simple JSON-RPC call could look like this:
-
 
 request = {
   "id": 1,
@@ -42,6 +42,27 @@ response = {
   "error": null,
   "result": "Hello World!"
 }
+
+Variants are handled the same way. A variant value is an array with two
+elements: The variant signature and the actual value. Note the variant can
+only contain single complete types. For returned variants the signature is
+skipped as well:
+
+Calling a method with one variant as parameter and a variant as return
+value, could look like this:
+
+request = {
+  "id": 1,
+  "service":"org.examle|/",
+  "method":"org.Example.VariantEcho"
+  "params": [ "v", [ "s", "Hello World!" ] ]
+}
+response = {
+  "id": 1,
+  "error": null,
+  "result": "Hello World!"
+}
+
 
 Limitations
 -----------
