@@ -17,16 +17,23 @@ basic_TESTS = \
 	basic_string_test.sh \
 	basic_signature_test.sh
 
+complex_TESTS = \
+	complex_array_test.sh \
+	complex_variant_test.sh \
+	complex_dict_test.sh
+
 TESTS = \
 	test_init.sh \
 	$(basic_TESTS) \
+	$(complex_TESTS) \
 	test_finish.sh
 
 EXTRA_DIST = \
 	dbus-test-service.py \
 	libtest.sh \
 	test_setup.sh \
-	$(basic_TESTS)
+	$(basic_TESTS) \
+	$(complex_TESTS)
 
 CLEANFILES = \
 	dbus-test-service.pid \

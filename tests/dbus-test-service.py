@@ -84,6 +84,31 @@ class Service(dbus.service.Object):
 	def SumINT32(self, val1, val2):
 		return val1 + val2;
 
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='v', out_signature='v')
+	def EchoVariant(self, val):
+		return val;
+
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='av', out_signature='av')
+	def EchoVariantArray(self, val):
+		return val;
+
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='ai', out_signature='ai')
+	def EchoArray(self, val):
+		return val;
+
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='ai', out_signature='i')
+	def CountArray(self, val):
+		return len(val);
+
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='a{si}', out_signature='a{si}')
+	def EchoDict(self, val):
+		return val;
+
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
