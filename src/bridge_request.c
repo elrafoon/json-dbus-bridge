@@ -313,6 +313,11 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 			return EINVAL;
 		}
 		vSig = json_object_get_string(tmp);
+		if (!dbus_signature_validate_single(vSig, 0)) {
+			bridge_request_error(self,
+				"invalid variant signature.");
+			return EINVAL;
+		}
 		dbus_message_iter_open_container(it, type,
 			 vSig, &args);
 		ret = bridge_request_dbus_params_array(self,
