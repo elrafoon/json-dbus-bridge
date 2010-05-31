@@ -42,7 +42,7 @@ jdb_call() {
 		exit 1
 	fi
 
-	wget -O "$result" --post-data="$data" "$url" > "$debug" 2>&1
+	wget -e no_proxy=localhost -O "$result" --post-data="$data" "$url" > "$debug" 2>&1
 	status=$?
 	if [ $status -ne 0 ]; then
 		echo 1>&2
