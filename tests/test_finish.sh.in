@@ -1,0 +1,5 @@
+#!/bin/sh
+
+kill `cat "@abs_builddir@/dbus-test-service.pid"`
+kill `cat "@abs_builddir@/lighttpd.pid"`
+

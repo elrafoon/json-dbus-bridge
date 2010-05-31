@@ -1,0 +1,17 @@
+#!/bin/sh
+
+. "@abs_srcdir@/libtest.sh"
+
+"@abs_srcdir@/dbus-test-service.py" &
+echo $! > "@abs_builddir@/dbus-test-service.pid"
+
+/usr/sbin/lighttpd -f "@abs_builddir@/lighttpd.conf" -D &
+echo $! > "@abs_builddir@/lighttpd.pid"
+
+echo -n "waiting for lighttpd "
+for i in `seq 10`; do
+	sleep 1
+	echo -n "."
+	jdb_test_bridge > /dev/null 2>&1 && break
+done
+

@@ -80,6 +80,7 @@ if test "${CONFIG_DEBUG}" = "yes"; then
 else
     CFLAGS="${CFLAGS} -O3"
 fi
+AC_SUBST(CONFIG_DEBUG)
 
 
 AC_CONFIG_FILES([
@@ -93,6 +94,8 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_FILES([demo/run.sh],[chmod +x demo/run.sh])
 AC_CONFIG_FILES([tests/run_test.sh],[chmod +x tests/run_test.sh])
+AC_CONFIG_FILES([tests/test_finish.sh],[chmod +x tests/test_finish.sh])
+AC_CONFIG_FILES([tests/test_init.sh],[chmod +x tests/test_init.sh])
 
 AC_OUTPUT
 

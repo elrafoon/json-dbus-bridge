@@ -77,7 +77,9 @@ jdb_test() {
 	local data="{ \"service\":\"$service\", \"method\":\"$method\", \"id\":$id, \"params\":$params }"
 	local expect="{ \"id\": $id, \"error\": $error, \"result\": $response }"
 
-	echo -n "$method($params)"
+	if [ "$JDB_TEST_VERBOSE" = "yes" ]; then
+		echo -n "$method($params)"
+	fi
 	local result
 	result=`jdb_call "$data"`
 	if [ $? -ne 0 ]; then
@@ -95,7 +97,9 @@ jdb_test() {
 		error_count=$[error_count+1]
 		return 1
 	else
-		echo "."
+		if [ "$JDB_TEST_VERBOSE" = "yes" ]; then
+			echo "."
+		fi
 	fi
 }
 
