@@ -1,13 +1,42 @@
 #!/bin/bash
 
-. @abs_srcdir@/libtest.sh
+. "@abs_srcdir@/libtest.sh"
 
+tests=()
+if [ $# -eq 0 ]; then
+	names=`cd "@abs_srcdir@";echo *_test.sh`
+else
+	names="$@"
+fi
+for t in $names; do
+	name=
+	for tt in \
+			"@abs_srcdir@/$t" \
+			"@abs_srcdir@/${t}_test.sh" \
+			"@abs_srcdir@/$t.sh"; do
+		if [ -x "$tt" ]; then
+			name="$tt"
+			break
+		fi
+	done
+	if [ -z "$name" ]; then
+		echo "Test '$t' not found."
+		exit 1
+	fi
+	tests[${#tests[@]}]="$name"
+done
+
+errors=0
 finish() {
 	kill $test_service_pid
 	kill $lighttpd_pid
 
-	jdb_status
-	exit $?
+	if [ $errors -eq 0 ]; then
+		echo "Success."
+	else
+		echo "$errors tests failed."
+		exit 1
+	fi
 }
 
 trap finish SIGINT
@@ -41,7 +70,14 @@ else
 	echo
 fi
 
-. "@abs_srcdir@/basic_test.sh"
+export JDB_TEST_URL="http://localhost:8080/rpc"
+export JDB_TEST_SERVICE="com.pengutronix.jdb.test|/"
+export JDB_TEST_VERBOSE="yes"
+
+for t in "${tests[@]}"; do
+	echo running `basename "$t"`:
+	"$t" || errors=$[errors+1]
+done
 
 finish
 

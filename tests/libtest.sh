@@ -21,14 +21,7 @@
 if [ -z "$libtest_tag" ]; then
 	libtest_tag=1
 	id=0
-	error_count=0
 fi
-
-jdb_status() {
-	echo
-	echo $error_count tests failed.
-	return $error_count
-}
 
 jdb_call() {
 	local url="$JDB_TEST_URL"
@@ -89,7 +82,6 @@ jdb_test() {
 	if [ $? -ne 0 ]; then
 		echo " Failed:"
 		echo Sent:     $data
-		error_count=$[error_count+1]
 		return 1
 	fi
 	if [ "x$result" != "x$expect" ]; then
@@ -98,7 +90,6 @@ jdb_test() {
 		echo "Expected: $expect"
 		echo "Got:      $result"
 		echo
-		error_count=$[error_count+1]
 		return 1
 	else
 		if [ "$JDB_TEST_VERBOSE" = "yes" ]; then
