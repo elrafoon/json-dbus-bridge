@@ -90,9 +90,9 @@ jdb_test() {
 	fi
 	if [ "x$result" != "x$expect" ]; then
 		echo " Failed:"
-		echo Sent:     $data
-		echo Expected: $expect
-		echo Got:      $result
+		echo "Sent:     $data"
+		echo "Expected: $expect"
+		echo "Got:      $result"
 		echo
 		error_count=$[error_count+1]
 		return 1
