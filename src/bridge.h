@@ -32,6 +32,8 @@ struct bridge {
 	DBusConnection *dbus_connection;
 	int socket;
 	struct event_base *event_base;
+	struct event *ev;
+	int running;
 };
 
 int bridge_init(bridge_t *self, const char *socket_path);

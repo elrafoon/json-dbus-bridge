@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include <dbus/dbus.h>
 
@@ -190,7 +191,8 @@ void bridge_handle_cgi(evutil_socket_t s, short flags, void *data)
 int bridge_init(bridge_t *self, const char *socket_path)
 {
 	DBusError dbus_error;
-	struct event *ev;
+
+	self->running = 0;
 
 	if (FCGX_Init() != 0) {
 		fprintf(stdout, "FCGX_Init failed.");
@@ -219,8 +221,8 @@ int bridge_init(bridge_t *self, const char *socket_path)
 
 	self->event_base = event_base_new();
 
-	ev = event_new(self->event_base, self->socket, EV_READ|EV_PERSIST, bridge_handle_cgi, self);
-	event_add(ev, 0);
+	self->ev = event_new(self->event_base, self->socket, EV_READ|EV_PERSIST, bridge_handle_cgi, self);
+	event_add(self->ev, 0);
 
 	if (!dbus_connection_set_watch_functions(self->dbus_connection,
 			_bridge_add_watch, _bridge_remove_watch,
@@ -247,17 +249,48 @@ int bridge_destroy(bridge_t *self)
 	for (request = self->head; request; request = next) {
 		next = request->next;
 		bridge_request_destroy(request);
+		free(request);
 	}
+	event_base_free(self->event_base);
+	event_free(self->ev);
 	return 0;
+}
+
+static void sig_handler(int fd, short event, void *arg)
+{
+	bridge_t *self = (bridge_t*)arg;
+	(void)fd;
+	(void)event;
+
+	self->running = 0;
+	event_base_loopbreak(self->event_base);
 }
 
 int bridge_run(bridge_t *self)
 {
+	struct event *ev_sigint;
+	struct event *ev_sigquit;
+	struct event *ev_sigterm;
 
-	while (1) {
+	ev_sigquit = event_new(self->event_base, SIGQUIT,
+		EV_SIGNAL|EV_PERSIST, sig_handler,  self);
+	event_add(ev_sigquit, 0);
+	ev_sigint = event_new(self->event_base, SIGINT,
+		EV_SIGNAL|EV_PERSIST, sig_handler,  self);
+	event_add(ev_sigint, 0);
+	ev_sigterm = event_new(self->event_base, SIGTERM,
+		EV_SIGNAL|EV_PERSIST, sig_handler,  self);
+	event_add(ev_sigterm, 0);
+
+	self->running = 1;
+	while (self->running) {
 		event_base_loop(self->event_base, 0);
 		while (dbus_connection_dispatch(self->dbus_connection) == DBUS_DISPATCH_DATA_REMAINS);
 	}
+
+	event_free(ev_sigquit);
+	event_free(ev_sigint);
+	event_free(ev_sigterm);
 
 /*
 	while(TRUE) {
