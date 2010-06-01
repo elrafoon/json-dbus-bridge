@@ -281,7 +281,7 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 				       DBusMessageIter *it)
 {
 	int type;
-	int ret;
+	int ret = 0;
 
 	type = dbus_signature_iter_get_current_type(sigIt);
 
@@ -322,9 +322,9 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 			 vSig, &args);
 		ret = bridge_request_dbus_params_array(self,
 			element, 1, vSig, &args);
+		dbus_message_iter_close_container(it, &args);
 		if (ret != 0)
 			return EINVAL;
-		dbus_message_iter_close_container(it, &args);
 	}
 	else if (type == DBUS_TYPE_ARRAY) {
 		DBusMessageIter args;
@@ -342,8 +342,6 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 		if (cType == DBUS_TYPE_DICT_ENTRY) {
 			ret = bridge_request_dbus_params_dict(self,
 				element, &sigArgs, &args);
-			if (ret != 0)
-				return ret;
 		}
 		else {
 			int i, len;
@@ -351,23 +349,23 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 			if (json_object_get_type(element) != json_type_array) {
 				bridge_request_error(self,
 					"array expected.");
-				return EINVAL;
+				ret = EINVAL;
 			}
-			len = json_object_array_length(element);
-			for (i = 0; i < len; ++i) {
-				struct json_object *tmp;
-				DBusSignatureIter tmpSigArgs = sigArgs;
+			else {
+				len = json_object_array_length(element);
+				for (i = 0; i < len; ++i) {
+					struct json_object *tmp;
+					DBusSignatureIter tmpSigArgs = sigArgs;
 
-				tmp = json_object_array_get_idx(element, i);
-				if (!tmp) {
-					bridge_request_error(self,
-						"value expected.");
-					return EINVAL;
+					tmp = json_object_array_get_idx(element, i);
+					if (!tmp) {
+						bridge_request_error(self,
+							"value expected.");
+						return EINVAL;
+					}
+					ret = bridge_request_dbus_params_element(self,
+						tmp, &tmpSigArgs, &args);
 				}
-				ret = bridge_request_dbus_params_element(self,
-					tmp, &tmpSigArgs, &args);
-				if (ret != 0)
-					return ret;
 			}
 		}
 		dbus_message_iter_close_container(it, &args);
@@ -377,7 +375,7 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 			"unsupported json argument type.");
 		return EINVAL;
 	}
-	return 0;
+	return ret;
 }
 
 int bridge_request_dbus_params_array(bridge_request_t *self,
