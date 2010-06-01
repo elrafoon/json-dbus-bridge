@@ -18,7 +18,7 @@ noinst_HEADERS = \
 	systeminfo_skel.h
 
 %_xml.h: %.xml
-	echo "#define $(shell echo $@ | tr [a-z] [A-Z] | sed -e "s,-,_,g" | sed -e "s,.H,,g") \\" > $@
+	$(AM_V_GEN) echo "#define $(shell echo $@ | tr [a-z] [A-Z] | sed -e "s,-,_,g" | sed -e "s,.H,,g") \\" > $@ ; \
 	cat $< | \
 	  sed -e 's,",\\\",g' | \
 	  sed -e 's,^,",g'    | \
