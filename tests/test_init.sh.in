@@ -5,6 +5,19 @@
 "@abs_srcdir@/dbus-test-service.py" &
 echo $! > "@abs_builddir@/dbus-test-service.pid"
 
+echo -n "waiting for dbus-test-service "
+for i in `seq 10`; do
+	sleep 1
+	echo -n "."
+	dbus-send --print-reply --dest=com.pengutronix.jdb.test / org.freedesktop.DBus.Introspectable.Introspect > /dev/null && break
+done
+if [ $? -ne 0 ]; then
+	echo Failed.
+	exit 1
+else
+	echo
+fi
+
 /usr/sbin/lighttpd -f "@abs_builddir@/lighttpd.conf" -D &
 echo $! > "@abs_builddir@/lighttpd.pid"
 
@@ -14,4 +27,10 @@ for i in `seq 10`; do
 	echo -n "."
 	jdb_test_bridge > /dev/null 2>&1 && break
 done
+if [ $? -ne 0 ]; then
+	echo Failed.
+	exit 1
+else
+	echo
+fi
 
