@@ -23,13 +23,13 @@ LT_AGE=0
 AC_SUBST(LT_CURRENT)
 AC_SUBST(LT_REVISION)
 AC_SUBST(LT_AGE)
+LT_INIT()
 
 
 #
 # Checks for programs.
 #
 AC_PROG_CC
-AC_PROG_LIBTOOL
 
 AM_INIT_AUTOMAKE([foreign no-exeext dist-bzip2])
 
