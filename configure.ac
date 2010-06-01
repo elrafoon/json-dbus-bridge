@@ -60,7 +60,7 @@ fi
 # libfcgi
 #
 AC_CHECK_HEADER(fcgiapp.h,,AC_MSG_ERROR([libfcgi headers not found.]))
-AC_CHECK_LIB(fcgi,,AC_MSG_ERROR([libfcgi not found.]))
+AC_CHECK_LIB(fcgi,FCGX_Init,,AC_MSG_ERROR([libfcgi not found.]))
 
 #
 # Debugging
