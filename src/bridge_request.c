@@ -1,7 +1,7 @@
 /*
  * json dbus bridge
  *
- * Copyright (c) 2009 by Michael Olbrich <m.olbrich@pengutronix.de>
+ * Copyright (c) 2009, 2010 by Michael Olbrich <m.olbrich@pengutronix.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
