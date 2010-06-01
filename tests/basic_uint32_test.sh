@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. `dirname $0`/test_setup.sh "com.pengutronix.jdb.Test.Basic" || return
+. `dirname $0`/test_setup.sh "com.pengutronix.jdb.Test.Basic" || exit
 
 jdb_test_echo EchoUINT32 u 42 &&
 echo "FIXME: support number > 2^31-1"

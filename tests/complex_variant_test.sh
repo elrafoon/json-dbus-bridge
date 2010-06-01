@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. `dirname $0`/test_setup.sh "com.pengutronix.jdb.Test.Complex" || return
+. `dirname $0`/test_setup.sh "com.pengutronix.jdb.Test.Complex" || exit
 
 jdb_test_echo EchoVariant v '[ "i", 42 ]' 42 &&
 jdb_test_echo EchoVariant v '[ "s", "foo" ]' '"foo"' &&

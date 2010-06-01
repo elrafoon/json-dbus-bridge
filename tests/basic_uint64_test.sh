@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. `dirname $0`/test_setup.sh "com.pengutronix.jdb.Test.Basic" || return
+. `dirname $0`/test_setup.sh "com.pengutronix.jdb.Test.Basic" || exit
 
 jdb_test_echo EchoUINT64 t 0 &&
 jdb_test_echo EchoUINT64 t 42 &&

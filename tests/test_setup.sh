@@ -4,5 +4,5 @@
 
 export JDB_TEST_IFACE="$1"
 
-jdb_test_bridge || return
+jdb_test_bridge 2> /dev/null || return
 
