@@ -11,3 +11,6 @@ EXTRA_DIST = \
 	index.html \
 	simple-test.sh
 
+CLEANFILES = \
+	error.log
+
