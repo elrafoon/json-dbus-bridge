@@ -282,6 +282,12 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 	int type;
 	int ret = 0;
 
+	if (!element) {
+		bridge_request_error(self,
+			"unecpected 'null' element found.");
+		return EINVAL;
+	}
+
 	type = dbus_signature_iter_get_current_type(sigIt);
 
 	if (dbus_type_is_basic(type)) {
@@ -397,6 +403,11 @@ int bridge_request_dbus_params_array(bridge_request_t *self,
 
 	for (i = idx; i < len; ++i) {
 		element = json_object_array_get_idx(params, i);
+		if (!element) {
+			bridge_request_error(self,
+				"Unexpected 'null' parameter found.");
+			return EINVAL;
+		}
 		ret = bridge_request_dbus_params_element(self,
 			element, &sigIt, it);
 		if (ret != 0)
@@ -430,7 +441,11 @@ int bridge_request_dbus_params(bridge_request_t *self,
 	}
 	if (json_object_array_length(params) == 0)
 		return 0;
-	tmp = json_object_array_get_idx(params, 0);
+
+	/* the may be only a null element in the array */
+	if ((tmp = json_object_array_get_idx(params, 0)) == 0)
+		return 0;
+
 	if (json_object_get_type(tmp) != json_type_string) {
 		bridge_request_error(self,
 			"First Argument must be the signature string.");
