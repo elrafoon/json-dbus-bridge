@@ -1,6 +1,6 @@
 AC_PREREQ(2.59)
 
-AC_INIT([json-dbus-bridge], 0.0.0, [bugs@pengutronix.de])
+AC_INIT([json-dbus-bridge], 1.0.0, [bugs@pengutronix.de])
 AC_CONFIG_SRCDIR([src/json-dbus-bridge.c])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_BUILD
