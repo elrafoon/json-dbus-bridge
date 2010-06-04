@@ -15,5 +15,7 @@ jdb_test_echo EchoINT32 i -1 &&
 jdb_test_echo EchoINT32 i 42 &&
 jdb_test_echo EchoINT32 i 2147483647 &&
 jdb_test_echo EchoINT32 i -2147483648 &&
+jdb_test_echo EchoINT32 i null null "Unexpected 'null' parameter found." &&
+jdb_test_echo SumINT32 ii "23, null"  null "Unexpected 'null' parameter found." &&
 jdb_test_echo EchoINT32 i '"foo"' null "integer value expected."
 
