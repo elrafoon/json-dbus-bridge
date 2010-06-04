@@ -256,6 +256,11 @@ int bridge_request_dbus_params_dict(bridge_request_t *self,
 	json_object_object_foreach(element, key, tmp)
 #endif
 	{
+		if (!tmp) {
+			bridge_request_error(self,
+				"unexpected 'null' value in json object.");
+			return EINVAL;
+		}
 		DBusSignatureIter tmpSigArgs = sigArgs;
 		dbus_message_iter_open_container(it, DBUS_TYPE_DICT_ENTRY, 0,&args);
 		dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &key);
@@ -281,12 +286,6 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 {
 	int type;
 	int ret = 0;
-
-	if (!element) {
-		bridge_request_error(self,
-			"unecpected 'null' element found.");
-		return EINVAL;
-	}
 
 	type = dbus_signature_iter_get_current_type(sigIt);
 
@@ -365,7 +364,7 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 					tmp = json_object_array_get_idx(element, i);
 					if (!tmp) {
 						bridge_request_error(self,
-							"value expected.");
+							"unexpected 'null' element in json array.");
 						return EINVAL;
 					}
 					ret = bridge_request_dbus_params_element(self,
