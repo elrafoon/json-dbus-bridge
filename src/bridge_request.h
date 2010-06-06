@@ -47,13 +47,12 @@ struct bridge_request {
 	FCGX_Request request;
 	int id;
 	struct json_tokener *tokener;
-	DBusConnection *dbus_connection;
 	bridge_t *bridge;
 	bridge_request_t *next;
 	struct json_object *response;
 };
 
-int bridge_request_init(bridge_request_t *self, bridge_t *bridge, DBusConnection *dbus_connection, int socket);
+int bridge_request_init(bridge_request_t *self, bridge_t *bridge, int socket);
 int bridge_request_destroy(bridge_request_t *self);
 
 int bridge_request_accept(bridge_request_t *self);

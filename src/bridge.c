@@ -169,8 +169,7 @@ void bridge_handle_cgi(evutil_socket_t s, short flags, void *data)
 	if (!self->head) {
 		fprintf(stderr, "%s malloc\n", __FUNCTION__);
 		self->head = malloc(sizeof(bridge_request_t));
-		ret = bridge_request_init(self->head, self,
-			self->dbus_connection, self->socket);
+		ret = bridge_request_init(self->head, self, self->socket);
 		if (ret != 0) {
 			fprintf(stdout, "bridge_request_init failed: %d", ret);
 			return;

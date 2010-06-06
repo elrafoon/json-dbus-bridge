@@ -31,14 +31,13 @@
 #include "bridge_request.h"
 #include "bridge.h"
 
-int bridge_request_init(bridge_request_t *self, bridge_t *bridge, DBusConnection *dbus_connection, int socket)
+int bridge_request_init(bridge_request_t *self, bridge_t *bridge, int socket)
 {
 
 	if (FCGX_InitRequest(&self->request, socket, FCGI_FAIL_ACCEPT_ON_INTR) != 0) {
 		return EINVAL;
 	}
 	self->tokener = json_tokener_new();
-	self->dbus_connection = dbus_connection;
 	self->bridge = bridge;
 	self->next = 0;
 	self->response = json_object_new_object();
@@ -695,7 +694,7 @@ int bridge_request_call_json_dbus(bridge_request_t *self, struct json_object *in
 	if ((ret = bridge_request_to_dbus(self, in_json, &msg)) != 0)
 		return ret;
 
-	if (!dbus_connection_send_with_reply(self->dbus_connection, msg,
+	if (!dbus_connection_send_with_reply(self->bridge->dbus_connection, msg,
 				 &pending, -1)) {
 		bridge_request_error(self, "Out of memory.");
 		ret = ENOMEM;
