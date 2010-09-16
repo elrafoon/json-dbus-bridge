@@ -115,6 +115,28 @@ class Service(dbus.service.Object):
 		keys = val.keys()
 		keys.sort()
 		return keys
+	
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='(aiuaiu)', out_signature='(aiuaiu)')
+	def EchoStruct(self, val):
+		return val;
+
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='a(aiu)', out_signature='a(aiu)')
+	def EchoStructArray(self, val):
+		return val;
+	
+	@dbus.service.method("com.pengutronix.jdb.Test.Complex",
+		in_signature='a(aiu)', out_signature='i')
+	def CountStructIntegerValues(self, val):
+		sum = 0
+		for struct in val:
+			ai = struct[0]
+			u  = struct[1]
+			for i in ai:
+				sum += i
+			sum += u
+		return sum;
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)

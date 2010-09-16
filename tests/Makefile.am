@@ -20,7 +20,8 @@ basic_TESTS = \
 complex_TESTS = \
 	complex_array_test.sh \
 	complex_variant_test.sh \
-	complex_dict_test.sh
+	complex_dict_test.sh \
+	complex_struct_test.sh
 
 TESTS = \
 	test_init.sh \
