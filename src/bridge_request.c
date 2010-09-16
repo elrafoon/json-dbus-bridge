@@ -273,6 +273,39 @@ int bridge_request_dbus_params_dict(bridge_request_t *self,
 	return 0;
 }
 
+int bridge_request_dbus_params_struct(bridge_request_t *self,
+				      struct json_object *element,
+				      DBusSignatureIter *sigIt,
+				      DBusMessageIter *it)
+{
+	int i, ret, len;
+	struct json_object *tmp;
+
+	len = json_object_array_length(element);
+
+	for (i = 0; i < len; ++i) {
+		tmp = json_object_array_get_idx(element, i);
+		if (!tmp) {
+			bridge_request_error(self,
+				"Unexpected 'null' parameter found.");
+			return EINVAL;
+		}
+		ret = bridge_request_dbus_params_element(self,
+			tmp, sigIt, it);
+		if (ret != 0)
+			return ret;
+		if (!dbus_signature_iter_next(sigIt)) {
+			if (i+1 == len)
+				return 0;
+			bridge_request_error(self,
+				"Unexpected extra parameter found.");
+			return EINVAL;
+		}
+	}
+	bridge_request_error(self, "Aditional parameter expexted.");
+	return EINVAL;
+}
+
 int bridge_request_dbus_params_array(bridge_request_t *self,
 				     struct json_object *params,
 				     int idx, const char *sig,
@@ -325,6 +358,24 @@ int bridge_request_dbus_params_element(bridge_request_t *self,
 			 vSig, &args);
 		ret = bridge_request_dbus_params_array(self,
 			element, 1, vSig, &args);
+		dbus_message_iter_close_container(it, &args);
+		if (ret != 0)
+			return EINVAL;
+	}
+	else if (type == DBUS_TYPE_STRUCT) {
+		DBusMessageIter args;
+		DBusSignatureIter sigArgs;
+
+		if (json_object_get_type(element) != json_type_array) {
+			bridge_request_error(self, "array expected.");
+			return EINVAL;
+		}
+
+		dbus_signature_iter_recurse(sigIt, &sigArgs);
+		dbus_message_iter_open_container(it, 
+			type, NULL, &args);
+		ret = bridge_request_dbus_params_struct(self,
+			element, &sigArgs, &args);
 		dbus_message_iter_close_container(it, &args);
 		if (ret != 0)
 			return EINVAL;
@@ -505,10 +556,12 @@ int bridge_request_json_params_parse(bridge_request_t *self, DBusMessageIter *it
 			break;
 		}
 		case DBUS_TYPE_ARRAY:
+		case DBUS_TYPE_STRUCT:
 		case DBUS_TYPE_VARIANT: {
 			DBusMessageIter args;
 			dbus_message_iter_recurse(it, &args);
-			ret = bridge_request_json_params(self, &args, result, type == DBUS_TYPE_ARRAY);
+			ret = bridge_request_json_params(self,
+				&args, result, ((type == DBUS_TYPE_ARRAY) || (type == DBUS_TYPE_STRUCT)));
 			if (ret != 0)
 				return ret;
 			break;
