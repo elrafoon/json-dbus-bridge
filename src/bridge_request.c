@@ -642,8 +642,8 @@ int bridge_request_to_dbus(bridge_request_t *self, struct json_object *in_json,
 {
 	DBusMessageIter it;
 	struct json_object *params;
-	const char *service, *iface;
-	char *method, *path;
+	const char *service, *iface, *cmethod;
+	char *path, *saveptr;
 	int ret;
 
 	if (!json_object_is_type(in_json, json_type_object) ||
@@ -651,24 +651,35 @@ int bridge_request_to_dbus(bridge_request_t *self, struct json_object *in_json,
 		bridge_request_fatal(self);
 		return EINVAL;
 	}
-	if ((ret = _json_object_object_getstring(in_json, "service", &service) != 0)) {
-		bridge_request_error(self, "No service specified.");
-		return ret;
-	}
-	if ((ret = _json_object_object_getstring(in_json, "method", &iface) != 0)) {
+	if ((ret = _json_object_object_getstring(in_json, "method", &cmethod) != 0)) {
 		bridge_request_error(self, "No method specified.");
 		return ret;
 	}
-	if ((path = strchr(service, '|')) == 0) {
-		bridge_request_error(self,
-			"Service must be '<dbus service>|<dbus path>'.");
+
+	char mutable_method[strlen(cmethod)+1];
+	strcpy(mutable_method, cmethod);
+
+	service = strtok_r(mutable_method, "|", &saveptr);
+	if(!service) {
+		bridge_request_error(self, "Method must be '<dbus service>|<dbus path>:<dbus interface>.<dbus method>'");
 		return EINVAL;
 	}
-	*path = '\0';
-	++path;
+
+	path = strtok_r(NULL, ":", &saveptr);
+	if(!path) {
+		bridge_request_error(self, "Method must be '<dbus service>|<dbus path>:<dbus interface>.<dbus method>'");
+		return EINVAL;
+	}
+
+	iface = strtok_r(NULL, ":", &saveptr);
+	if(!iface) {
+		bridge_request_error(self, "Method must be '<dbus service>|<dbus path>:<dbus interface>.<dbus method>'");
+		return EINVAL;
+	}
+
+	char *method;
 	if ((method = strrchr(iface, '.')) == 0) {
-		bridge_request_error(self,
-			"Method must be '<interface>.<method>'.");
+		bridge_request_error(self, "Method must be '<dbus service>|<dbus path>:<dbus interface>.<dbus method>'");
 		return EINVAL;
 	}
 	*method = '\0';
