@@ -99,8 +99,8 @@ int bridge_request_send_response(bridge_request_t *self,
 				 struct json_object *result)
 {
 	json_object_object_add(self->response, "id", json_object_new_int(self->id));
-	json_object_object_add(self->response, "error", error);
-	json_object_object_add(self->response, "result", result);
+	json_object_object_add(self->response, "error", json_object_get(error));
+	json_object_object_add(self->response, "result", json_object_get(result));
 
 	bridge_request_transmit(self, self->response);
 
