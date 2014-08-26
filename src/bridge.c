@@ -269,8 +269,8 @@ int bridge_destroy(bridge_t *self)
 		bridge_request_destroy(request);
 		free(request);
 	}
-	event_base_free(self->event_base);
 	event_free(self->ev);
+	event_base_free(self->event_base);
 	return 0;
 }
 
