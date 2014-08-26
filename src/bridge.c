@@ -21,12 +21,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-
+#include <string.h>
 #include <dbus/dbus.h>
 
 #include <event.h>
 
 #include "bridge.h"
+
+#define container_of(ptr, type, member) ({ \
+		                const typeof( ((type *)0)->member ) *__mptr = (ptr); \
+		                (type *)( (char *)__mptr - offsetof(type,member) );})
 
 void _bridge_wkaeup_main(void *data)
 {
@@ -46,8 +50,8 @@ void _bridge_dispatch_status(DBusConnection *connection, DBusDispatchStatus new_
 
 void _bridge_handle_dbus_watch(evutil_socket_t s, short flags, void *data)
 {
-	DBusConnection *connection = dbus_bus_get(DBUS_BUS_SESSION, 0);
-	DBusWatch *watch = (DBusWatch*)data;
+	struct bridge_watch_data *cb_data = (struct bridge_watch_data *)data;
+	DBusConnection *connection = dbus_bus_get(cb_data->self->dbus_bus_type, 0);
 	unsigned int f = 0;
 
 	(void)s;
@@ -56,69 +60,73 @@ void _bridge_handle_dbus_watch(evutil_socket_t s, short flags, void *data)
 		f |= DBUS_WATCH_READABLE;
 	if (flags & EV_WRITE)
 		f |= DBUS_WATCH_WRITABLE;
-	if (!dbus_watch_handle(watch, f))
+	if (!dbus_watch_handle(cb_data->watch, f))
 		return;
 	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
 }
 
 void _bridge_handle_dbus_timeout(evutil_socket_t s, short flags, void *data)
 {
-	DBusConnection *connection = dbus_bus_get(DBUS_BUS_SESSION, 0);
-	DBusTimeout *timeout = (DBusTimeout*)data;
+	struct bridge_timeout_data *cb_data = (struct bridge_timeout_data *)data;
+	DBusConnection *connection = dbus_bus_get(cb_data->self->dbus_bus_type, 0);
 
 	(void)s;
 
 	if (!(flags & EV_TIMEOUT))
 		return;
 
-	if (!dbus_timeout_handle(timeout))
+	if (!dbus_timeout_handle(cb_data->timeout))
 		return;
 	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
 }
 
 void _bridge_toggle_watch(DBusWatch *watch, void *data)
 {
-	struct event *ev = (struct event*)dbus_watch_get_data(watch);
+	struct bridge_watch_data *cb_data = (struct bridge_watch_data *)dbus_watch_get_data(watch);
 	(void)data;
 
 	if (dbus_watch_get_enabled(watch))
-		event_add(ev, 0);
+		event_add(cb_data->ev, 0);
 	else
-		event_del(ev);
+		event_del(cb_data->ev);
 	return;
 }
 
 dbus_bool_t _bridge_add_watch(DBusWatch *watch, void *data)
 {
 	bridge_t *self = (bridge_t*)data;
-	struct event *ev;
-
+	struct bridge_watch_data *cb_data = (struct bridge_watch_data *)malloc(sizeof(struct bridge_watch_data));
 	int f = 0;
+
 	if (dbus_watch_get_flags(watch) & DBUS_WATCH_READABLE)
 		f |= EV_READ;
 	if (dbus_watch_get_flags(watch) & DBUS_WATCH_WRITABLE)
 		f |= EV_WRITE;
 
-	ev = event_new(self->event_base, dbus_watch_get_unix_fd(watch),
-		f|EV_PERSIST, _bridge_handle_dbus_watch, watch);
+	cb_data->self = self;
+	cb_data->watch = watch;
+	cb_data->ev = event_new(self->event_base, dbus_watch_get_unix_fd(watch),
+							f|EV_PERSIST, _bridge_handle_dbus_watch, cb_data);
 
-	dbus_watch_set_data(watch, ev, 0);
-	_bridge_toggle_watch(watch, data);
+	dbus_watch_set_data(watch, cb_data, 0);
+	_bridge_toggle_watch(watch, cb_data);
 	return TRUE;
 }
 
 void _bridge_remove_watch(DBusWatch *watch, void *data)
 {
-	struct event *ev = (struct event*)dbus_watch_get_data(watch);
+	struct bridge_watch_data *cb_data = (struct bridge_watch_data *)dbus_watch_get_data(watch);
 	(void)data;
 
-	event_free(ev);
+	event_free(cb_data->ev);
+	free(cb_data);
+
 	return;
 }
 
 void _bridge_toggle_timeout(DBusTimeout *timeout, void *data)
 {
-	struct event *ev = (struct event*)dbus_timeout_get_data(timeout);
+	struct bridge_timeout_data *cb_data = (struct bridge_timeout_data *)dbus_timeout_get_data(timeout);
 	int interval = dbus_timeout_get_interval(timeout);
 	struct timeval t = {
 		.tv_sec = interval/1000,
@@ -127,30 +135,33 @@ void _bridge_toggle_timeout(DBusTimeout *timeout, void *data)
 	(void)data;
 
 	if (dbus_timeout_get_enabled(timeout))
-		event_add(ev, &t);
+		event_add(cb_data->ev, &t);
 	else
-		event_del(ev);
+		event_del(cb_data->ev);
 	return;
 }
 
 dbus_bool_t _bridge_add_timeout(DBusTimeout *timeout, void *data)
 {
 	bridge_t *self = (bridge_t*)data;
-	struct event *ev;
+	struct bridge_timeout_data *cb_data = (struct bridge_timeout_data *)malloc(sizeof(struct bridge_timeout_data));
 
-	ev = event_new(self->event_base, -1,
-		EV_PERSIST, _bridge_handle_dbus_timeout, timeout);
-	dbus_timeout_set_data(timeout, ev, 0);
-	_bridge_toggle_timeout(timeout, data);
+	cb_data->self = self;
+	cb_data->timeout = timeout;
+	cb_data->ev = event_new(self->event_base, -1,
+		EV_PERSIST, _bridge_handle_dbus_timeout, cb_data);
+	dbus_timeout_set_data(timeout, cb_data, 0);
+	_bridge_toggle_timeout(timeout, cb_data);
 	return TRUE;
 }
 
 void _bridge_remove_timeout(DBusTimeout *timeout, void *data)
 {
-	struct event *ev = (struct event*)dbus_timeout_get_data(timeout);
+	struct bridge_timeout_data *cb_data = (struct bridge_timeout_data *)dbus_timeout_get_data(timeout);
 	(void)data;
 
-	event_free(ev);
+	event_free(cb_data->ev);
+	free(cb_data);
 	return;
 }
 
@@ -186,11 +197,20 @@ void bridge_handle_cgi(evutil_socket_t s, short flags, void *data)
 	request->next = 0;
 }
 
-int bridge_init(bridge_t *self, const char *socket_path)
+int bridge_init(bridge_t *self, const char *socket_path, const char *dbus_bus_type)
 {
 	DBusError dbus_error;
 
 	self->running = 0;
+
+	if(!strcmp(dbus_bus_type, "system"))
+		self->dbus_bus_type = DBUS_BUS_SYSTEM;
+	else if(!strcmp(dbus_bus_type, "session"))
+		self->dbus_bus_type = DBUS_BUS_SESSION;
+	else {
+		fprintf(stdout, "Unknown bus '%s'\n", dbus_bus_type);
+		return EINVAL;
+	}
 
 	if (FCGX_Init() != 0) {
 		fprintf(stdout, "FCGX_Init failed.");
@@ -210,7 +230,7 @@ int bridge_init(bridge_t *self, const char *socket_path)
 
 	/* attach us to dbus */
 	dbus_error_init(&dbus_error);
-	if ((self->dbus_connection = dbus_bus_get(DBUS_BUS_SESSION, &dbus_error)) == 0) {
+	if ((self->dbus_connection = dbus_bus_get(self->dbus_bus_type, &dbus_error)) == 0) {
 		fprintf(stdout, "couldn't connect to dbus: %s: %s", dbus_error.name, dbus_error.message);
 		return EINVAL;
 	}

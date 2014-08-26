@@ -27,12 +27,15 @@ int main(int argc, char *argv[])
 {
 	int ret;
 	bridge_t bridge;
-	const char *socket = 0;
+	const char *socket = 0, *bus = "system";
 
-	if (argc == 2)
+	if (argc >= 2)
 		socket = argv[1];
 
-	if ((ret = bridge_init(&bridge, socket)) != 0) {
+	if (argc >= 3)
+		bus = argv[2];
+
+	if ((ret = bridge_init(&bridge, socket, bus)) != 0) {
 		fprintf(stderr, "bridge_init failed");
 		goto out_return;
 	}

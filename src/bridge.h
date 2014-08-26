@@ -23,11 +23,11 @@
 #define SOCKET_BACKLOG 10
 
 #include <event.h>
-
 #include "bridge_request.h"
 
 struct bridge {
 	bridge_request_t *head;
+	DBusBusType dbus_bus_type;
 	DBusConnection *dbus_connection;
 	int socket;
 	struct event_base *event_base;
@@ -35,7 +35,19 @@ struct bridge {
 	int running;
 };
 
-int bridge_init(bridge_t *self, const char *socket_path);
+struct bridge_timeout_data {
+	struct bridge *self;
+	DBusTimeout *timeout;
+	struct event *ev;
+};
+
+struct bridge_watch_data {
+	struct bridge *self;
+	DBusWatch *watch;
+	struct event *ev;
+};
+
+int bridge_init(bridge_t *self, const char *socket_path, const char *dbus_bus_type);
 int bridge_destroy(bridge_t *self);
 
 int bridge_run(bridge_t *self);
