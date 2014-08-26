@@ -20,14 +20,14 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-
+#include <stdlib.h>
 #include "bridge.h"
 
 int main(int argc, char *argv[])
 {
 	int ret;
 	bridge_t bridge;
-	const char *socket = 0, *bus = "system";
+	const char *socket = 0, *bus = strdup(getenv("JDB_BUS") ? getenv("JDB_BUS") : "system");
 
 	if (argc >= 2)
 		socket = argv[1];
@@ -44,5 +44,6 @@ int main(int argc, char *argv[])
 
 	bridge_destroy(&bridge);
 out_return:
+	free(bus);
 	return ret;
 }
