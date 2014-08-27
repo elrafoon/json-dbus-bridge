@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include "bridge.h"
 
 int main(int argc, char *argv[])
@@ -44,6 +45,6 @@ int main(int argc, char *argv[])
 
 	bridge_destroy(&bridge);
 out_return:
-	free(bus);
+	free((char *)bus);
 	return ret;
 }
