@@ -168,6 +168,9 @@ int bridge_request_dbus_params_basic(bridge_request_t *self,
 				     DBusMessageIter *it)
 {
 	int int_value;
+	unsigned uint_value;
+	int64_t i64_value;
+	uint64_t ui64_value;
 	double double_value;
 	const char *str_value;
 	void *value = 0;
@@ -192,19 +195,43 @@ int bridge_request_dbus_params_basic(bridge_request_t *self,
 			value = &double_value;
 			break;
 		case DBUS_TYPE_BYTE:
-		case DBUS_TYPE_INT16:
 		case DBUS_TYPE_UINT16:
-		case DBUS_TYPE_INT32:
 		case DBUS_TYPE_UINT32:
-		case DBUS_TYPE_INT64:
+			if (json_object_get_type(param) != json_type_int) {
+				bridge_request_error(self,
+					"integer value expected.");
+				return EINVAL;
+			}
+			uint_value = json_object_get_int64(param);
+			value = &uint_value;
+			break;
 		case DBUS_TYPE_UINT64:
 			if (json_object_get_type(param) != json_type_int) {
 				bridge_request_error(self,
 					"integer value expected.");
 				return EINVAL;
 			}
-			int_value = json_object_get_int(param);
+			ui64_value = json_object_get_int64(param);
+			value = &ui64_value;
+			break;
+		case DBUS_TYPE_INT16:
+		case DBUS_TYPE_INT32:
+			if (json_object_get_type(param) != json_type_int) {
+				bridge_request_error(self,
+					"integer value expected.");
+				return EINVAL;
+			}
+			int_value = json_object_get_int64(param);
 			value = &int_value;
+			break;
+		case DBUS_TYPE_INT64:
+			if (json_object_get_type(param) != json_type_int) {
+				bridge_request_error(self,
+					"integer value expected.");
+				return EINVAL;
+			}
+			i64_value = json_object_get_int64(param);
+			value = &i64_value;
 			break;
 		case DBUS_TYPE_STRING:
 		case DBUS_TYPE_OBJECT_PATH:
