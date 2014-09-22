@@ -753,7 +753,7 @@ int bridge_request_call_dbus_json(bridge_request_t *self, DBusMessage *in_dbus)
 	}
 
 	if (dbus_message_iter_init(in_dbus, &it)) {
-		if ((ret = bridge_request_json_params(self, &it, &result, 0)) != 0)
+		if ((ret = bridge_request_json_params(self, &it, &result, dbus_message_iter_has_next(&it))) != 0)
 			goto finish;
 	}
 
