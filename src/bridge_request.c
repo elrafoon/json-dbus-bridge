@@ -70,11 +70,11 @@ int bridge_request_getinput(bridge_request_t *self, char **data)
 		return EINVAL;
 
 	if ((buffer = malloc((size_t)len+1)) == 0) {
-		FCGX_FPrintF(self->request.err, "out of memory!");
+		FCGX_PutS("out of memory!", self->request.err);
 		return ENOMEM;
 	}
 	if (FCGX_GetStr(buffer, len, self->request.in) != len) {
-		FCGX_FPrintF(self->request.err, "Got less data than expected.");
+		FCGX_PutS("Got less data than expected.", self->request.err);
 		return EINVAL;
 	}
 	buffer[len] = '\0';
@@ -84,14 +84,14 @@ int bridge_request_getinput(bridge_request_t *self, char **data)
 
 void bridge_request_transmit(bridge_request_t *self, struct json_object *obj)
 {
-	FCGX_FPrintF(self->request.out, "Content-type: application/json\r\n\r\n");
-	FCGX_FPrintF(self->request.out, json_object_to_json_string(obj));
+	FCGX_PutS("Content-type: application/json\r\n\r\n", self->request.out);
+	FCGX_PutS(json_object_to_json_string(obj), self->request.out);
 }
 
 void bridge_request_fatal(bridge_request_t *self)
 {
-	FCGX_FPrintF(self->request.out, "Status: 400 Bad Request\r\n\r\n");
-	FCGX_FPrintF(self->request.err, "Status: 400 Bad Request\n");
+	FCGX_PutS("Status: 400 Bad Request\r\n\r\n", self->request.out);
+	FCGX_PutS("Status: 400 Bad Request\n", self->request.err);
 }
 
 int bridge_request_send_response(bridge_request_t *self,
