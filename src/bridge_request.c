@@ -631,12 +631,21 @@ int bridge_request_json_params(bridge_request_t *self, DBusMessageIter *it,
 {
 	struct json_object *tmp;
 	const char *key;
+	char *signature;
 
 	*result = 0;
 
 	/* empty array */
 	if (is_array && dbus_message_iter_get_arg_type(it) == DBUS_TYPE_INVALID) {
-		*result = json_object_new_array();
+		// empty array of dict entries => empty json object
+		// empty array of other types => empty json array
+		signature = dbus_message_iter_get_signature(it);
+		if(signature && signature[0] == '{') {
+			*result = json_object_new_object();
+			dbus_free(signature);
+		}
+		else
+			*result = json_object_new_array();
 		return 0;
 	}
 
