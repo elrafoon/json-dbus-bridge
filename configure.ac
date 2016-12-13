@@ -76,7 +76,7 @@ AC_ARG_ENABLE(debug,
     [CONFIG_DEBUG=yes])
 AC_MSG_RESULT([${CONFIG_DEBUG}])
 if test "${CONFIG_DEBUG}" = "yes"; then
-    CFLAGS="${CFLAGS} -Werror -Wsign-compare -Wfloat-equal -Wformat-security -g -O1"
+    CFLAGS="${CFLAGS} -Wsign-compare -Wfloat-equal -Wformat-security -g -O1"
     AC_DEFINE(DEBUG, 1, [debugging])
 else
     CFLAGS="${CFLAGS} -O3"
