@@ -1,0 +1,10 @@
+[Unit]
+Description=json-dbus bridge on %I
+
+[Socket]
+ListenStream=/var/run/json-dbus-bridge@%I.socket
+Accept=no
+
+[Install]
+WantedBy=sockets.target
+

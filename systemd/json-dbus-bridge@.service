@@ -1,0 +1,11 @@
+[Unit]
+Description=json-dbus bridge on %I
+
+[Service]
+ExecStart=/usr/bin/json-dbus-bridge /var/run/json-dbus-bridge@%I.socket %I
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=basic.target
+
