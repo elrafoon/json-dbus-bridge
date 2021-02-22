@@ -1,0 +1,8 @@
+#!/bin/sh
+
+groupadd --system json-dbus-bridge
+
+systemctl stop json-dbus-bridge@system.socket
+systemctl stop json-dbus-bridge@system.service
+systemctl enable json-dbus-bridge@system.socket
+systemctl start json-dbus-bridge@system.socket

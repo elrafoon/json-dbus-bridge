@@ -3,8 +3,10 @@ Description=json-dbus bridge on %I
 
 [Socket]
 ListenStream=/var/run/json-dbus-bridge@%I.socket
+SocketMode=0660
+SocketUser=root
+SocketGroup=json-dbus-bridge
 Accept=no
 
 [Install]
 WantedBy=sockets.target
-

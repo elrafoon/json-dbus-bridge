@@ -1,0 +1,4 @@
+#!/bin/sh
+
+usermod -aG shadow,json-dbus-bridge www-data
+systemctl restart nginx

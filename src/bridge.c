@@ -28,6 +28,10 @@
 
 #include "bridge.h"
 
+#if CONFIG_SYSTEMD
+# include <systemd/sd-daemon.h>
+#endif
+
 #define container_of(ptr, type, member) ({ \
 		                const typeof( ((type *)0)->member ) *__mptr = (ptr); \
 		                (type *)( (char *)__mptr - offsetof(type,member) );})
@@ -217,6 +221,11 @@ int bridge_init(bridge_t *self, const char *socket_path, const char *dbus_bus_ty
 		return EINVAL;
 	}
 
+#if CONFIG_SYSTEMD
+	if(sd_listen_fds(0) > 0)
+		self->socket = SD_LISTEN_FDS_START + 0;
+	else
+#endif
 	if (socket_path) {
 		if ((self->socket = FCGX_OpenSocket(socket_path, SOCKET_BACKLOG)) < 0) {
 			fprintf(stdout, "FCGX_OpenSocket failed: \"%s\".",
